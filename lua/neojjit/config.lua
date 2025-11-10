@@ -30,6 +30,8 @@ M.values = {
 			["y"] = "log_copy_change_id",
 			["g"] = "log_copy_commit_hash",
 			["b"] = "log_set_bookmark",
+			["e"] = "log_edit",
+			["n"] = "log_new",
 			["?"] = "log_help",
 		},
   },

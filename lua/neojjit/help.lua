@@ -35,6 +35,8 @@ local log_help_sections = {
 		"k Previous entry",
 	},
 	commands = {
+		"e Edit change",
+		"n New change",
 		"y Copy change ID",
 		"g Copy commit hash",
 		"b Set bookmark",

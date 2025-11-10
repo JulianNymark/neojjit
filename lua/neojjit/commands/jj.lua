@@ -337,4 +337,24 @@ function M.set_bookmark(bookmark_name, change_id)
   return result
 end
 
+-- Edit a specific change (set working copy to that change)
+function M.edit(change_id)
+  local args = { "edit", change_id }
+  local result = M.execute(args)
+  if result then
+    vim.notify(string.format("Now editing %s", change_id), vim.log.levels.INFO)
+  end
+  return result
+end
+
+-- Create new change on top of a specific change
+function M.new_on_change(change_id)
+  local args = { "new", change_id }
+  local result = M.execute(args)
+  if result then
+    vim.notify(string.format("Created new change on %s", change_id), vim.log.levels.INFO)
+  end
+  return result
+end
+
 return M

@@ -120,6 +120,16 @@ function M.log_set_bookmark()
   log_view.set_bookmark()
 end
 
+-- Log view: edit change
+function M.log_edit()
+  log_view.edit_change()
+end
+
+-- Log view: new change
+function M.log_new()
+  log_view.new_change()
+end
+
 -- Log view: close
 function M.log_close()
   log_view.close()

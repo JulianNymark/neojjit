@@ -207,6 +207,38 @@ function M.set_bookmark()
   end)
 end
 
+-- Edit (switch working copy to) current entry
+function M.edit_change()
+  local change_id = get_current_change_id()
+  if not change_id then
+    vim.notify("No change ID on current line", vim.log.levels.WARN)
+    return
+  end
+
+  -- Edit the change
+  local result = jj.edit(change_id)
+  if result then
+    -- Refresh log view to show updated state
+    M.refresh()
+  end
+end
+
+-- Create new change on top of current entry
+function M.new_change()
+  local change_id = get_current_change_id()
+  if not change_id then
+    vim.notify("No change ID on current line", vim.log.levels.WARN)
+    return
+  end
+
+  -- Create new change on top of this change
+  local result = jj.new_on_change(change_id)
+  if result then
+    -- Refresh log view to show updated state
+    M.refresh()
+  end
+end
+
 -- Refresh log view
 function M.refresh()
   if config.values.debug then
