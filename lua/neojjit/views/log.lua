@@ -56,7 +56,7 @@ local function extract_ids_from_line(line, line_index)
   local change_id = nil
   if change_id_match then
     -- Extract the captured group (8 chars after 2 spaces)
-    local start_pos = change_id_match + 2  -- Skip 2 spaces
+    local start_pos = change_id_match + 2 -- Skip 2 spaces
     change_id = clean_line:sub(start_pos + 1, start_pos + 8)
   end
 
@@ -82,7 +82,7 @@ local function generate_content()
 
   -- Header (no ANSI codes in header)
   table.insert(lines, "Log View")
-  table.insert(lines, "Hint: j/k navigate | b set bookmark | q quit ")
+  table.insert(lines, "Hint: j/k navigate | d describe | b set bookmark | q quit")
   table.insert(lines, "")
 
   if #state.log_lines == 0 then
@@ -320,6 +320,20 @@ function M.new_change()
     -- Refresh log view to show updated state
     M.refresh()
   end
+end
+
+-- Describe the change at cursor
+function M.describe_change()
+  local change_id = get_current_change_id()
+  if not change_id then
+    vim.notify("No change ID on current line", vim.log.levels.WARN)
+    return
+  end
+
+  -- Describe the change with a callback to refresh log view
+  jj.describe_change(change_id, function()
+    M.refresh()
+  end)
 end
 
 -- Refresh log view

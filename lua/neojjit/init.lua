@@ -153,6 +153,11 @@ function M.log_new()
   log_view.new_change()
 end
 
+-- Log view: describe change
+function M.log_describe()
+  log_view.describe_change()
+end
+
 -- Log view: close
 function M.log_close()
   log_view.close()

@@ -29,6 +29,7 @@ M.values = {
 		log = {
 			["q"] = "log_close",
 			["<C-r>"] = "log_refresh",
+			["d"] = "log_describe",
 			["y"] = "log_copy_change_id",
 			["g"] = "log_copy_commit_hash",
 			["b"] = "log_set_bookmark",

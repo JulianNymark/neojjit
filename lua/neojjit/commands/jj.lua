@@ -47,8 +47,8 @@ function M.describe(callback)
   -- Create a new buffer for editing the description
   local bufnr = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial_lines)
-  vim.api.nvim_buf_set_option(bufnr, "buftype", "acwrite")
-  vim.api.nvim_buf_set_option(bufnr, "filetype", "gitcommit")
+  vim.api.nvim_set_option_value("buftype", "acwrite", { buf = bufnr })
+  vim.api.nvim_set_option_value("filetype", "gitcommit", { buf = bufnr })
   vim.api.nvim_buf_set_name(bufnr, "JJ_DESCRIPTION")
 
   -- Save the original buffer
@@ -129,6 +129,97 @@ function M.describe(callback)
   vim.cmd("startinsert")
 end
 
+-- Describe a specific change
+function M.describe_change(change_id, callback)
+  -- Get current description for the specified change
+  local current_desc = M.execute({ "log", "-r", change_id, "--no-graph", "-T", "description" })
+  local initial_lines = current_desc or { "" }
+
+  -- Create a new buffer for editing the description
+  local bufnr = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial_lines)
+  vim.api.nvim_set_option_value("buftype", "acwrite", { buf = bufnr })
+  vim.api.nvim_set_option_value("filetype", "gitcommit", { buf = bufnr })
+  vim.api.nvim_buf_set_name(bufnr, string.format("JJ_DESCRIPTION_%s", change_id))
+
+  -- Save the original buffer
+  local original_bufnr = vim.api.nvim_get_current_buf()
+
+  -- Open the buffer in current window
+  vim.api.nvim_set_current_buf(bufnr)
+
+  -- Set up autocmd to handle save
+  vim.api.nvim_create_autocmd("BufWriteCmd", {
+    buffer = bufnr,
+    callback = function()
+      -- Get the description from buffer
+      local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+      -- Remove comment lines (lines starting with # or JJ:)
+      local comment_re = vim.regex('^\\(#\\|JJ:\\)')
+      local filtered_lines = {}
+      for _, line in ipairs(lines) do
+        if not comment_re:match_str(line) then
+          table.insert(filtered_lines, line)
+        end
+      end
+
+      local description = table.concat(filtered_lines, "\n")
+
+      -- Trim whitespace from beginning and end
+      description = vim.trim(description)
+
+      if description == "" then
+        vim.notify("Empty description, aborting", vim.log.levels.WARN)
+        return
+      end
+
+      -- Execute jj describe with the message for the specific change
+      local result = M.execute({ "describe", "-r", change_id, "-m", description })
+
+      if result then
+        vim.notify(string.format("Description updated for %s", change_id), vim.log.levels.INFO)
+        -- Close the description buffer
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+
+        -- Call callback if provided (should refresh the log view)
+        if callback then
+          callback()
+        else
+          -- If no callback, return to original buffer
+          if vim.api.nvim_buf_is_valid(original_bufnr) then
+            vim.api.nvim_set_current_buf(original_bufnr)
+          end
+        end
+      else
+        vim.notify(string.format("Failed to update description for %s", change_id), vim.log.levels.ERROR)
+      end
+    end,
+  })
+
+  -- Set up autocmd to handle quit without save
+  vim.api.nvim_create_autocmd("BufWipeout", {
+    buffer = bufnr,
+    once = true,
+    callback = function()
+      -- Return to original buffer if still valid
+      if vim.api.nvim_buf_is_valid(original_bufnr) then
+        vim.api.nvim_set_current_buf(original_bufnr)
+      end
+    end,
+  })
+
+  -- Add instructions as comments
+  vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, {
+    "",
+    "JJ: Saving (:w) will automatically close this buffer",
+    "JJ: If you saved before you were finished describing you can invoke describe again",
+  })
+
+  -- Start in insert mode
+  vim.cmd("startinsert")
+end
+
 -- Create new change
 function M.new()
   local result = M.execute({ "new" })
@@ -147,8 +238,8 @@ function M.commit(callback)
   -- Create a new buffer for editing the description
   local bufnr = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial_lines)
-  vim.api.nvim_buf_set_option(bufnr, "buftype", "acwrite")
-  vim.api.nvim_buf_set_option(bufnr, "filetype", "gitcommit")
+  vim.api.nvim_set_option_value("buftype", "acwrite", { buf = bufnr })
+  vim.api.nvim_set_option_value("filetype", "gitcommit", { buf = bufnr })
   vim.api.nvim_buf_set_name(bufnr, "JJ_COMMIT")
 
   -- Save the original buffer

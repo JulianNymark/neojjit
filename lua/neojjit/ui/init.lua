@@ -12,11 +12,11 @@ function M.create_buffer(name, opts)
   local bufnr = vim.api.nvim_create_buf(false, true)
 
   -- Set buffer options
-  vim.api.nvim_buf_set_option(bufnr, "buftype", "nofile")
-  vim.api.nvim_buf_set_option(bufnr, "swapfile", false)
-  vim.api.nvim_buf_set_option(bufnr, "filetype", opts.filetype or "neojjit")
-  vim.api.nvim_buf_set_option(bufnr, "bufhidden", "wipe")
-  vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
+  vim.api.nvim_set_option_value("buftype", "nofile", { buf = bufnr })
+  vim.api.nvim_set_option_value("swapfile", false, { buf = bufnr })
+  vim.api.nvim_set_option_value("filetype", opts.filetype or "neojjit", { buf = bufnr })
+  vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = bufnr })
+  vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr })
 
   -- Store buffer reference
   M.buffers[name] = {
@@ -46,9 +46,9 @@ function M.open_buffer(bufnr, opts)
 
   -- Set window options
   local winnr = vim.api.nvim_get_current_win()
-  vim.api.nvim_win_set_option(winnr, "number", false)
-  vim.api.nvim_win_set_option(winnr, "relativenumber", false)
-  vim.api.nvim_win_set_option(winnr, "cursorline", true)
+  vim.api.nvim_set_option_value("number", false, { win = winnr })
+  vim.api.nvim_set_option_value("relativenumber", false, { win = winnr })
+  vim.api.nvim_set_option_value("cursorline", true, { win = winnr })
 
   return winnr
 end
@@ -60,13 +60,13 @@ function M.render(bufnr, lines)
   end
 
   -- Make buffer modifiable
-  vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
+  vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
 
   -- Set lines
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
 
   -- Make buffer readonly again
-  vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
+  vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr })
 
   if config.values.debug then
     vim.notify(string.format("[UI] Rendered %d lines to buffer %d", #lines, bufnr), vim.log.levels.DEBUG)
