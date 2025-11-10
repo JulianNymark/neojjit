@@ -105,12 +105,12 @@ end
 
 -- Show help popup
 function M.help()
-	help.show()
+  help.show()
 end
 
 -- Show log help popup
 function M.log_help()
-	help.show("log")
+  help.show("log")
 end
 
 -- Show log view
@@ -156,6 +156,11 @@ end
 -- Log view: describe change
 function M.log_describe()
   log_view.describe_change()
+end
+
+-- Log view: abandon change
+function M.log_abandon()
+  log_view.abandon_change()
 end
 
 -- Log view: close

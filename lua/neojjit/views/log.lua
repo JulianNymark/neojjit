@@ -8,14 +8,15 @@ local ansi = require("neojjit.ansi")
 -- Current state
 local state = {
   bufnr = nil,
-  log_lines = {},         -- Raw log output with ANSI colors
+  log_lines = {}, -- Raw log output with ANSI colors
   line_to_change_id = {}, -- Map buffer line number to change ID
   line_to_commit_id = {}, -- Map buffer line number to commit ID
-  entry_lines = {},       -- List of line numbers that are log entry headers
+  entry_lines = {}, -- List of line numbers that are log entry headers
 }
 
 -- Extract change ID and commit ID from a log line
--- Returns: change_id, commit_id, is_entry_line
+-- Returns: change_id, commit_id,  is_entry_line
+-- Looks for graph symbols (@, ○, ◆) to identify entry lines
 local function extract_ids_from_line(line, line_index)
   -- Strip ANSI codes for parsing
   local clean_line = ansi.strip_ansi(line)
@@ -33,7 +34,7 @@ local function extract_ids_from_line(line, line_index)
   local first_byte = clean_line:byte(1)
   local is_entry_line = false
 
-  if first_byte == 0x40 then     -- '@' character
+  if first_byte == 0x40 then -- '@' character
     is_entry_line = true
   elseif first_byte == 0xE2 then -- Potential UTF-8 multi-byte char
     local second_byte = clean_line:byte(2)
@@ -51,7 +52,7 @@ local function extract_ids_from_line(line, line_index)
 
   -- Look for: graph symbol + spaces + 8-char change ID + space
   -- After @ or ◆, there are usually 2 spaces, then the 8-char change ID
-  local change_id_pattern = vim.regex('\\s\\s\\(\\w\\{8}\\)\\s')
+  local change_id_pattern = vim.regex("\\s\\s\\(\\w\\{8}\\)\\s")
   local change_id_match = change_id_pattern:match_str(clean_line)
   local change_id = nil
   if change_id_match then
@@ -61,7 +62,7 @@ local function extract_ids_from_line(line, line_index)
   end
 
   -- Look for commit_id (8-char hex at the end of the line)
-  local commit_id_pattern = vim.regex('\\([0-9a-f]\\{8}\\)\\s*$')
+  local commit_id_pattern = vim.regex("\\([0-9a-f]\\{8}\\)\\s*$")
   local commit_id_match = commit_id_pattern:match_str(clean_line)
   local commit_id = nil
   if commit_id_match then
@@ -129,7 +130,21 @@ local function get_current_change_id()
   end
 
   local line_num = vim.api.nvim_win_get_cursor(0)[1]
-  return state.line_to_change_id[line_num]
+
+  -- First check if current line has a change ID
+  if state.line_to_change_id[line_num] then
+    return state.line_to_change_id[line_num]
+  end
+
+  -- If not, search upward for the nearest entry line (within 5 lines)
+  for i = 1, 5 do
+    local check_line = line_num - i
+    if check_line > 0 and state.line_to_change_id[check_line] then
+      return state.line_to_change_id[check_line]
+    end
+  end
+
+  return nil
 end
 
 -- Get commit ID for current line

@@ -496,4 +496,14 @@ function M.undo()
   return result
 end
 
+-- Abandon a specific change
+function M.abandon(change_id)
+  local args = { "abandon", change_id }
+  local result = M.execute(args)
+  if result then
+    vim.notify(string.format("Abandoned change %s", change_id), vim.log.levels.INFO)
+  end
+  return result
+end
+
 return M
