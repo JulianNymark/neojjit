@@ -43,20 +43,20 @@ function M.describe(callback)
   -- Get current description
   local current_desc = M.execute({ "log", "-r", "@", "--no-graph", "-T", "description" })
   local initial_lines = current_desc or { "" }
-  
+
   -- Create a new buffer for editing the description
   local bufnr = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial_lines)
   vim.api.nvim_buf_set_option(bufnr, "buftype", "acwrite")
   vim.api.nvim_buf_set_option(bufnr, "filetype", "gitcommit")
   vim.api.nvim_buf_set_name(bufnr, "JJ_DESCRIPTION")
-  
+
   -- Save the original buffer
   local original_bufnr = vim.api.nvim_get_current_buf()
-  
+
   -- Open the buffer in current window
   vim.api.nvim_set_current_buf(bufnr)
-  
+
   -- Set up autocmd to handle save
   vim.api.nvim_create_autocmd("BufWriteCmd", {
     buffer = bufnr,
@@ -64,23 +64,23 @@ function M.describe(callback)
       -- Get the description from buffer
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
       local description = table.concat(lines, "\n")
-      
+
       -- Remove empty lines from beginning and end
       description = description:gsub("^%s*", ""):gsub("%s*$", "")
-      
+
       if description == "" then
         vim.notify("Empty description, aborting", vim.log.levels.WARN)
         return
       end
-      
+
       -- Execute jj describe with the message
       local result = M.execute({ "describe", "-m", description })
-      
+
       if result then
         vim.notify("Description updated", vim.log.levels.INFO)
         -- Close the description buffer
         vim.api.nvim_buf_delete(bufnr, { force = true })
-        
+
         -- Call callback if provided (should refresh and potentially re-open status view)
         if callback then
           callback()
@@ -95,7 +95,7 @@ function M.describe(callback)
       end
     end,
   })
-  
+
   -- Set up autocmd to handle quit without save
   vim.api.nvim_create_autocmd("BufWipeout", {
     buffer = bufnr,
@@ -107,14 +107,14 @@ function M.describe(callback)
       end
     end,
   })
-  
+
   -- Add instructions as comments
   vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, {
     "",
     "# Edit the description above",
     "# Save and close (:wq) to apply, or just close (:q) to cancel",
   })
-  
+
   -- Start in insert mode
   vim.cmd("startinsert")
 end
@@ -133,27 +133,27 @@ function M.commit(callback)
   -- Get current description
   local current_desc = M.execute({ "log", "-r", "@", "--no-graph", "-T", "description" })
   local initial_lines = current_desc or { "" }
-  
+
   -- Create a new buffer for editing the description
   local bufnr = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, initial_lines)
   vim.api.nvim_buf_set_option(bufnr, "buftype", "acwrite")
   vim.api.nvim_buf_set_option(bufnr, "filetype", "gitcommit")
   vim.api.nvim_buf_set_name(bufnr, "JJ_COMMIT")
-  
+
   -- Save the original buffer
   local original_bufnr = vim.api.nvim_get_current_buf()
-  
+
   -- Open the buffer in current window
   vim.api.nvim_set_current_buf(bufnr)
-  
+
   -- Set up autocmd to handle save
   vim.api.nvim_create_autocmd("BufWriteCmd", {
     buffer = bufnr,
     callback = function()
       -- Get the description from buffer
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-      
+
       -- Remove comment lines
       local filtered_lines = {}
       for _, line in ipairs(lines) do
@@ -161,27 +161,27 @@ function M.commit(callback)
           table.insert(filtered_lines, line)
         end
       end
-      
+
       local description = table.concat(filtered_lines, "\n")
-      
+
       -- Remove empty lines from beginning and end
       description = description:gsub("^%s*", ""):gsub("%s*$", "")
-      
+
       if description == "" then
         vim.notify("Empty description, aborting", vim.log.levels.WARN)
         return
       end
-      
+
       -- Execute jj describe + new
       local desc_result = M.execute({ "describe", "-m", description })
-      
+
       if desc_result then
         local new_result = M.execute({ "new" })
         if new_result then
           vim.notify("Commit completed", vim.log.levels.INFO)
           -- Close the commit buffer
           vim.api.nvim_buf_delete(bufnr, { force = true })
-          
+
           -- Call callback if provided (should refresh and potentially re-open status view)
           if callback then
             callback()
@@ -199,7 +199,7 @@ function M.commit(callback)
       end
     end,
   })
-  
+
   -- Set up autocmd to handle quit without save
   vim.api.nvim_create_autocmd("BufWipeout", {
     buffer = bufnr,
@@ -211,14 +211,14 @@ function M.commit(callback)
       end
     end,
   })
-  
+
   -- Add instructions as comments
   vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, {
     "",
     "# Edit the commit message above",
     "# Save and close (:wq) to commit, or just close (:q) to cancel",
   })
-  
+
   -- Start in insert mode
   vim.cmd("startinsert")
 end
@@ -227,42 +227,51 @@ end
 function M.diff(filepath)
   local has_difft = vim.fn.executable("difft") == 1
   local use_difft = config.values.use_difftastic and has_difft
-  
+
   local args = { "diff" }
-  
+  local opts = {}
+
   if use_difft then
-    -- Use difftastic
+    local width = vim.api.nvim_win_get_width(0) - 4
+
+    -- Set jj config for difft width using --config flag (runtime-only, non-persistent)
+    table.insert(args, 1, "--config")
+    table.insert(
+      args,
+      2,
+      string.format('merge-tools.difft.diff-args=["--color=always", "--width=%d", "$left", "$right"]', width)
+    )
     table.insert(args, "--tool")
     table.insert(args, "difft")
   else
     -- Use regular diff with color
     table.insert(args, "--color=always")
   end
-  
+
   -- Add filepath if provided
   if filepath and filepath ~= "" then
     table.insert(args, filepath)
   end
-  
-  local result = M.execute(args)
-  
+
+  local result = M.execute(args, opts)
+
   if result and #result > 0 then
     -- Add a blank line before the diff for readability
     table.insert(result, 1, "")
   end
-  
+
   return result
 end
 
 -- Get diff in git format (for patch processing)
 function M.diff_git(filepath)
   local args = { "diff", "--git", "--no-pager" }
-  
+
   -- Add filepath if provided
   if filepath and filepath ~= "" then
     table.insert(args, filepath)
   end
-  
+
   return M.execute(args)
 end
 
@@ -271,10 +280,10 @@ function M.restore(filepaths)
   if type(filepaths) == "string" then
     filepaths = { filepaths }
   end
-  
+
   local args = { "restore" }
   vim.list_extend(args, filepaths)
-  
+
   local result = M.execute(args)
   if result then
     local file_list = table.concat(filepaths, ", ")

@@ -89,18 +89,45 @@ Since Jujutsu has a different model than Git, some features work differently:
 
 ```lua
 require('neojjit').setup {
-  -- Path to jj executable (defaults to "jj")
-  jj_executable = "jj",
-  
   -- Enable debug logging to :messages (defaults to false)
   debug = false,
   
-  -- All other options same as neogit
-  kind = "tab",
-  disable_hint = false,
-  -- ... see neogit docs for full options
+  -- Use difftastic for diffs if available (defaults to true)
+  -- When enabled, neojjit will automatically configure difftastic
+  -- to use the full window width via jj's --config flag.
+  -- This only affects the runtime command and does not modify any config files.
+  use_difftastic = true,
+  
+  -- Auto-close status view after operations (defaults to false)
+  auto_close = false,
+  
+  -- Custom key mappings for status view
+  mappings = {
+    status = {
+      ["q"] = "close",
+      ["<C-r>"] = "refresh",
+      ["d"] = "describe",
+      ["n"] = "new",
+      ["c"] = "commit",
+      ["x"] = "restore",
+      ["l"] = "log",
+      ["?"] = "help",
+      ["<CR>"] = "show_diff",
+      ["<Tab>"] = "toggle",
+    },
+  },
 }
 ```
+
+### Difftastic Integration
+
+If [difftastic](https://github.com/Wilfred/difftastic) is installed and `use_difftastic` is enabled, neojjit will automatically use it for displaying diffs with the following features:
+
+- Automatically adjusts diff width to match your current window width
+- Uses syntax-aware structural diffs
+- Configuration is applied per-command and never modifies your jj config files
+
+To disable difftastic, set `use_difftastic = false` in your neojjit config.
 
 ## Contributing
 
