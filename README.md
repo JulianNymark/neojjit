@@ -14,8 +14,6 @@ Jujutsu (jj) is a version control system that provides a simpler, more intuitive
 
 ## Status
 
-This project is in early development. Core functionality being implemented:
-
 - ✅ Basic jj CLI wrapper
 - ✅ Status parsing and display
 - ✅ Repository detection
@@ -24,8 +22,9 @@ This project is in early development. Core functionality being implemented:
 - ✅ Inline diff viewing (with difftastic support)
 - ✅ Basic operations (describe, new, commit, restore)
 - ✅ Push and pull (git push/fetch)
-- ⏳ Bookmark management
-- ⏳ Log view
+- ✅ Log view with ANSI color support
+- ✅ Bookmark management (set bookmarks on changes)
+- ✅ Navigate and interact with log entries (edit, new change)
 - ⏳ Advanced operations (squash, rebase)
 
 ## Installation
