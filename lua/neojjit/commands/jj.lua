@@ -319,4 +319,22 @@ function M.pull()
   return result
 end
 
+-- Get log entries with color output (similar to terminal)
+function M.log(revset)
+  revset = revset or "ancestors(immutable_heads().., 5)"
+
+  local args = { "log", "-r", revset, "--color=always" }
+  return M.execute(args)
+end
+
+-- Set bookmark on a specific change
+function M.set_bookmark(bookmark_name, change_id)
+  local args = { "bookmark", "set", bookmark_name, "-r", change_id }
+  local result = M.execute(args)
+  if result then
+    vim.notify(string.format("Set bookmark '%s' on %s", bookmark_name, change_id), vim.log.levels.INFO)
+  end
+  return result
+end
+
 return M

@@ -11,8 +11,8 @@ local state = {
   bufnr = nil,
   working_copy = nil,
   changes = {},
-  expanded = {},     -- Track which files have diffs expanded
-  highlights = {},   -- Store ANSI highlights to apply after rendering
+  expanded = {}, -- Track which files have diffs expanded
+  highlights = {}, -- Store ANSI highlights to apply after rendering
   line_metadata = {}, -- Map buffer line number to metadata { type, filename, diff_line, content }
 }
 
@@ -67,10 +67,7 @@ local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
     local buffer_line = start_buffer_line + i
 
     if config.values.debug then
-      vim.notify(
-        string.format("[PARSE] Line %d (buf %d): '%s'", i, buffer_line, line:sub(1, 50)),
-        vim.log.levels.DEBUG
-      )
+      vim.notify(string.format("[PARSE] Line %d (buf %d): '%s'", i, buffer_line, line:sub(1, 50)), vim.log.levels.DEBUG)
     end
 
     -- Check if this is a header line (e.g., "Modified regular file test.txt:")
@@ -134,10 +131,7 @@ local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
               content = content,
             }
             if config.values.debug then
-              vim.notify(
-                string.format("[PARSE] Added (fmt1) %d: new=%s", buffer_line, new_num),
-                vim.log.levels.DEBUG
-              )
+              vim.notify(string.format("[PARSE] Added (fmt1) %d: new=%s", buffer_line, new_num), vim.log.levels.DEBUG)
             end
           else
             -- Try added line without colon (difftastic)
@@ -165,10 +159,7 @@ local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
                   content = content,
                 }
                 if config.values.debug then
-                  vim.notify(
-                    string.format("[PARSE] Removed %d: old=%s", buffer_line, old_num),
-                    vim.log.levels.DEBUG
-                  )
+                  vim.notify(string.format("[PARSE] Removed %d: old=%s", buffer_line, old_num), vim.log.levels.DEBUG)
                 end
               else
                 -- Other line
@@ -198,7 +189,7 @@ end
 -- Generate buffer content
 local function generate_content()
   local lines = {}
-  state.highlights = {}   -- Reset highlights
+  state.highlights = {} -- Reset highlights
   state.line_metadata = {} -- Reset line metadata
 
   -- Header with keybindings hint
@@ -299,9 +290,10 @@ function M.toggle()
     local content = generate_content()
     ui.render(state.bufnr, content)
 
-    -- Apply ANSI highlights
+    -- Apply ANSI highlights with dedicated namespace for status view
     if #state.highlights > 0 then
-      ansi.apply_highlights(state.bufnr, state.highlights)
+      local status_namespace = vim.api.nvim_create_namespace("neojjit_status_ansi")
+      ansi.apply_highlights(state.bufnr, state.highlights, status_namespace)
     end
   end
 end
@@ -413,7 +405,7 @@ function M.restore(start_line, end_line)
     end
 
     local prompt =
-        string.format("Discard %d added line(s) from:\n  %s\n(y/n) ", total_lines, table.concat(file_list, "\n  "))
+      string.format("Discard %d added line(s) from:\n  %s\n(y/n) ", total_lines, table.concat(file_list, "\n  "))
 
     vim.ui.input({ prompt = prompt }, function(input)
       if input and (input:lower() == "y" or input:lower() == "yes") then
@@ -489,9 +481,10 @@ function M.refresh()
     local content = generate_content()
     ui.render(state.bufnr, content)
 
-    -- Apply ANSI highlights
+    -- Apply ANSI highlights with dedicated namespace for status view
     if #state.highlights > 0 then
-      ansi.apply_highlights(state.bufnr, state.highlights)
+      local status_namespace = vim.api.nvim_create_namespace("neojjit_status_ansi")
+      ansi.apply_highlights(state.bufnr, state.highlights, status_namespace)
     end
   end
 

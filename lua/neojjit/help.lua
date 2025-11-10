@@ -10,7 +10,7 @@ local help_sections = {
 		"d Describe",
 		"n New change",
 		"c Commit (d + n)",
-		"l Log (TBD)",
+		"l Log",
 		"p Pull",
 		"P Push",
 	},

@@ -2,6 +2,7 @@
 local M = {}
 local config = require("neojjit.config")
 local status_view = require("neojjit.views.status")
+local log_view = require("neojjit.views.log")
 local ansi = require("neojjit.ansi")
 local jj = require("neojjit.commands.jj")
 local help = require("neojjit.help")
@@ -94,9 +95,44 @@ function M.help()
   help.show()
 end
 
--- Show log (stub for now)
+-- Show log view
 function M.log()
-  vim.notify("Log view not yet implemented", vim.log.levels.INFO)
+  log_view.open()
+end
+
+-- Log view: copy change ID
+function M.log_copy_change_id()
+  log_view.copy_change_id()
+end
+
+-- Log view: copy commit hash
+function M.log_copy_commit_hash()
+  log_view.copy_commit_hash()
+end
+
+-- Log view: set bookmark
+function M.log_set_bookmark()
+  log_view.set_bookmark()
+end
+
+-- Log view: close
+function M.log_close()
+  log_view.close()
+end
+
+-- Log view: refresh
+function M.log_refresh()
+  log_view.refresh()
+end
+
+-- Log view: next entry
+function M.log_next_entry()
+  log_view.next_entry()
+end
+
+-- Log view: previous entry
+function M.log_prev_entry()
+  log_view.prev_entry()
 end
 
 -- Push changes to remote

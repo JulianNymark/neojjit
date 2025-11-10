@@ -2,7 +2,7 @@
 -- Converts ANSI escape sequences to Neovim highlight groups
 local M = {}
 
--- ANSI color code to highlight group mapping
+-- ANSI color code to highlight group mapping (for standard codes)
 local color_map = {
   -- Standard colors (30-37 foreground, 40-47 background)
   ["30"] = "Black",
@@ -29,6 +29,42 @@ local color_map = {
   ["49"] = nil, -- Default background (reset to default)
 }
 
+-- ANSI 256 color palette (subset - most commonly used by jj)
+local color_256_map = {
+  -- 256 color palette (0-15) - brightened palette
+  ["0"] = "#3a3a3a",
+  ["1"] = "#ff6b6b",
+  ["2"] = "#51cf66",
+  ["3"] = "#ffd43b",
+  ["4"] = "#5c7cfa",
+  ["5"] = "#e599f7",
+  ["6"] = "#3bc9db",
+  ["7"] = "#e9ecef",
+  ["8"] = "#adb5bd",
+  ["9"] = "#ff8787",
+  ["10"] = "#69db7c",
+  ["11"] = "#ffe066",
+  ["12"] = "#748ffc",
+  ["13"] = "#f388ff",
+  ["14"] = "#66d9e8",
+  ["15"] = "#ffffff",
+}
+
+-- Get highlight group name for 256 color
+local function get_color_256_hl(color_num, bold)
+  local hl_name = "NeojjitColor" .. color_num .. (bold and "Bold" or "")
+
+  -- Create highlight group if it doesn't exist
+  if not vim.api.nvim_get_hl(0, { name = hl_name }).fg then
+    local color = color_256_map[color_num]
+    if color then
+      vim.api.nvim_set_hl(0, hl_name, { fg = color, bold = bold or false })
+    end
+  end
+
+  return hl_name
+end
+
 -- Parse ANSI escape sequences and return clean text with highlight regions
 -- Returns: { text = "cleaned text", highlights = {{line, col_start, col_end, group}...} }
 function M.parse_line(line, line_num)
@@ -37,6 +73,7 @@ function M.parse_line(line, line_num)
   local col = 0
   local current_color = nil
   local color_start_col = nil
+  local bold = false
 
   -- Pattern to match ANSI escape sequences
   -- ESC[...m format where ESC is \27 or \x1b
@@ -84,38 +121,57 @@ function M.parse_line(line, line_num)
       -- Reset/normal
       current_color = nil
       color_start_col = nil
+      bold = false
     else
-      -- Parse color codes (can be multiple separated by ;)
-      local bold = false
+      -- Parse color codes - handle both standard and 256 color modes
+      local codes_table = {}
+      for code in codes:gmatch("%d+") do
+        table.insert(codes_table, code)
+      end
+
+      local i = 1
       local temp_color = nil
 
-      for code in codes:gmatch("%d+") do
+      while i <= #codes_table do
+        local code = codes_table[i]
+
         if code == "0" then
           -- Reset
           current_color = nil
           color_start_col = nil
           bold = false
+          temp_color = nil
         elseif code == "1" then
           -- Bold/bright
           bold = true
         elseif code == "2" then
           -- Dim - ignore for now
         elseif code == "22" then
-          -- Not bold - ignore for now
+          -- Not bold
           bold = false
+        elseif code == "38" and codes_table[i + 1] == "5" and codes_table[i + 2] then
+          -- 256-color mode: 38;5;N (for log view colors)
+          local color_num = codes_table[i + 2]
+          current_color = get_color_256_hl(color_num, bold)
+          color_start_col = col
+          i = i + 2 -- Skip the next two codes (5 and N)
+        elseif code == "39" or code == "49" then
+          -- Reset to default foreground/background
+          current_color = nil
+          color_start_col = nil
+          temp_color = nil
         else
+          -- Check for standard ANSI color codes (30-37, 90-97)
           local color_name = color_map[code]
           if color_name then
             temp_color = color_name
-          elseif code == "39" or code == "49" then
-            -- Reset to default foreground/background
-            current_color = nil
-            color_start_col = nil
           end
         end
+
+        i = i + 1
       end
 
-      -- Apply the color if we found one
+      -- Apply the standard color if we found one (for difftastic in status view)
       if temp_color then
         current_color = "Neojjit" .. temp_color .. (bold and "Bold" or "")
         color_start_col = col
@@ -158,6 +214,15 @@ function M.apply_highlights(bufnr, highlights, namespace)
     -- nvim_buf_add_highlight uses 0-based line numbers and byte-indexed columns
     pcall(vim.api.nvim_buf_add_highlight, bufnr, namespace, hl.group, hl.line, hl.col_start, hl.col_end)
   end
+end
+
+-- Strip ANSI escape sequences from a string
+function M.strip_ansi(str)
+  if not str then
+    return ""
+  end
+  -- Remove ANSI escape sequences (ESC[...m format)
+  return str:gsub("\27%[[%d;]*m", "")
 end
 
 -- Define highlight groups for ANSI colors
