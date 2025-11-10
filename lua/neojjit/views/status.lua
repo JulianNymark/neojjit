@@ -20,28 +20,38 @@ local state = {
 local function parse_status(lines)
   local changes = {}
   local working_copy = "@ (unknown)"
+  
+  -- Compile regex patterns once
+  local file_change_re = vim.regex('^\\([AMD]\\)\\s\\+\\(.\\+\\)$')
+  local working_copy_re = vim.regex('^Working copy\\s\\+(@)\\s*:\\s*\\(.\\+\\)$')
+  local wc_ids_re = vim.regex('^\\(\\S\\+\\)\\s\\+\\(\\S\\+\\)\\s\\+\\(.*\\)$')
 
   for _, line in ipairs(lines) do
     -- Parse file changes: "A filename" or "M filename" or "D filename"
-    -- Only match single-letter status codes at start of line
-    local status, file = line:match("^([AMD])%s+(.+)$")
-    if status and file then
-      table.insert(changes, {
-        status = status,
-        file = file,
-      })
+    local match_start = file_change_re:match_str(line)
+    if match_start then
+      local status = line:sub(1, 1)
+      local file = line:match("^[AMD]%s+(.+)$")
+      if status and file then
+        table.insert(changes, {
+          status = status,
+          file = file,
+        })
+      end
     end
 
     -- Parse working copy line: "Working copy  (@) : change_id commit_id description"
-    -- Example: "Working copy  (@) : ruzrnrvn d6524489 (no description set)"
-    local wc_info = line:match("^Working copy%s+%(@%)%s*:%s*(.+)$")
-    if wc_info then
-      -- Extract change_id and commit_id
-      local change_id, commit_id, desc = wc_info:match("^(%S+)%s+(%S+)%s+(.*)$")
-      if change_id and commit_id then
-        working_copy = string.format("%s %s", change_id:sub(1, 8), commit_id:sub(1, 8))
-        if desc and desc ~= "" then
-          working_copy = working_copy .. " " .. desc
+    match_start = working_copy_re:match_str(line)
+    if match_start then
+      local wc_info = line:match("^Working copy%s+%(@%)%s*:%s*(.+)$")
+      if wc_info then
+        -- Extract change_id and commit_id
+        local change_id, commit_id, desc = wc_info:match("^(%S+)%s+(%S+)%s+(.*)$")
+        if change_id and commit_id then
+          working_copy = string.format("%s %s", change_id:sub(1, 8), commit_id:sub(1, 8))
+          if desc and desc ~= "" then
+            working_copy = working_copy .. " " .. desc
+          end
         end
       end
     end
@@ -62,6 +72,16 @@ end
 -- Returns table of { buffer_line -> { type, file_line, content, filename } }
 local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
   local metadata = {}
+  
+  -- Compile regex patterns once
+  local header_re = vim.regex('^\\w\\+ .* file .\\+:')
+  local header_added_re = vim.regex('^Added .* file')
+  local header_deleted_re = vim.regex('^Deleted .* file')
+  local context_colon_re = vim.regex('^\\s*\\(\\d\\+\\)\\s\\+\\(\\d\\+\\): \\(.*\\)$')
+  local context_no_colon_re = vim.regex('^\\(\\d\\+\\)\\s\\+\\(\\d\\+\\)\\s\\(.*\\)$')
+  local added_colon_re = vim.regex('^\\s\\+\\(\\d\\+\\): \\(.*\\)$')
+  local added_no_colon_re = vim.regex('^\\s\\+\\(\\d\\+\\)\\s\\(.*\\)$')
+  local removed_re = vim.regex('^\\s*\\(\\d\\+\\)\\s\\+: \\(.*\\)$')
 
   for i, line in ipairs(diff_lines) do
     local buffer_line = start_buffer_line + i
@@ -70,27 +90,18 @@ local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
       vim.notify(string.format("[PARSE] Line %d (buf %d): '%s'", i, buffer_line, line:sub(1, 50)), vim.log.levels.DEBUG)
     end
 
-    -- Check if this is a header line (e.g., "Modified regular file test.txt:")
-    if line:match("^%w+ .* file .+:") or line:match("^Added .* file") or line:match("^Deleted .* file") then
+    -- Check if this is a header line
+    if header_re:match_str(line) or header_added_re:match_str(line) or header_deleted_re:match_str(line) then
       metadata[buffer_line] = {
         type = "header",
         filename = filename,
         content = line,
       }
     else
-      -- Try to parse different line formats:
-      -- Format 1 (non-difftastic):
-      --   Context line: "   old    new: content" (both line numbers with colon)
-      --   Added line:   "        new: content" (only new line number with colon)
-      --   Removed line: "   old     : content" (only old line number with colon)
-      -- Format 2 (difftastic):
-      --   Context line: "old  new content" (both line numbers, no colon)
-      --   Added line:   "     new content" (only new line number, no colon)
-
-      -- Try Format 1 first (with colon)
-      local old_num, new_num, content = line:match("^%s*(%d+)%s+(%d+): (.*)$")
-      if old_num and new_num then
-        -- Context line with colon
+      -- Try Format 1 (with colon): "   old    new: content"
+      local match = context_colon_re:match_str(line)
+      if match then
+        local old_num, new_num, content = line:match("^%s*(%d+)%s+(%d+): (.*)$")
         metadata[buffer_line] = {
           type = "context",
           filename = filename,
@@ -98,16 +109,13 @@ local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
           content = content,
         }
         if config.values.debug then
-          vim.notify(
-            string.format("[PARSE] Context (fmt1) %d: old=%s new=%s", buffer_line, old_num, new_num),
-            vim.log.levels.DEBUG
-          )
+          vim.notify(string.format("[PARSE] Context (fmt1) %d: old=%s new=%s", buffer_line, old_num, new_num), vim.log.levels.DEBUG)
         end
       else
-        -- Try Format 2 (without colon) - difftastic
-        old_num, new_num, content = line:match("^(%d+)%s+(%d+)%s(.*)$")
-        if old_num and new_num then
-          -- Context line from difftastic
+        -- Try Format 2 (difftastic): "old  new content"
+        match = context_no_colon_re:match_str(line)
+        if match then
+          local old_num, new_num, content = line:match("^(%d+)%s+(%d+)%s(.*)$")
           metadata[buffer_line] = {
             type = "context",
             filename = filename,
@@ -115,15 +123,13 @@ local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
             content = content,
           }
           if config.values.debug then
-            vim.notify(
-              string.format("[PARSE] Context (difft) %d: old=%s new=%s", buffer_line, old_num, new_num),
-              vim.log.levels.DEBUG
-            )
+            vim.notify(string.format("[PARSE] Context (difft) %d: old=%s new=%s", buffer_line, old_num, new_num), vim.log.levels.DEBUG)
           end
         else
           -- Try added line with colon
-          new_num, content = line:match("^%s+(%d+): (.*)$")
-          if new_num and not line:match("^%s*%d+%s+%d+:") then
+          match = added_colon_re:match_str(line)
+          if match and not line:match("^%s*%d+%s+%d+:") then
+            local new_num, content = line:match("^%s+(%d+): (.*)$")
             metadata[buffer_line] = {
               type = "added",
               filename = filename,
@@ -135,8 +141,9 @@ local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
             end
           else
             -- Try added line without colon (difftastic)
-            new_num, content = line:match("^%s+(%d+)%s(.*)$")
-            if new_num and not line:match("^%d+%s+%d+%s") then
+            match = added_no_colon_re:match_str(line)
+            if match and not line:match("^%d+%s+%d+%s") then
+              local new_num, content = line:match("^%s+(%d+)%s(.*)$")
               metadata[buffer_line] = {
                 type = "added",
                 filename = filename,
@@ -144,15 +151,13 @@ local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
                 content = content,
               }
               if config.values.debug then
-                vim.notify(
-                  string.format("[PARSE] Added (difft) %d: new=%s", buffer_line, new_num),
-                  vim.log.levels.DEBUG
-                )
+                vim.notify(string.format("[PARSE] Added (difft) %d: new=%s", buffer_line, new_num), vim.log.levels.DEBUG)
               end
             else
               -- Try removed line (only old number)
-              old_num, content = line:match("^%s*(%d+)%s+: (.*)$")
-              if old_num then
+              match = removed_re:match_str(line)
+              if match then
+                local old_num, content = line:match("^%s*(%d+)%s+: (.*)$")
                 metadata[buffer_line] = {
                   type = "removed",
                   filename = filename,
@@ -273,7 +278,7 @@ function M.toggle()
   local line = vim.api.nvim_buf_get_lines(state.bufnr, line_num - 1, line_num, false)[1]
 
   -- Extract filename from status line (format: "status     filename")
-  local filename = line:match("^added%s+(.+)$") or line:match("^modified%s+(.+)$") or line:match("^deleted%s+(.+)$")
+  local filename = extract_filename(line)
 
   if filename then
     -- Toggle expansion state
@@ -300,7 +305,22 @@ end
 
 -- Extract filename from a status line
 local function extract_filename(line)
-  return line:match("^added%s+(.+)$") or line:match("^modified%s+(.+)$") or line:match("^deleted%s+(.+)$")
+  -- Compile patterns once (they're static)
+  local patterns = {
+    vim.regex('^added\\s\\+\\(.\\+\\)$'),
+    vim.regex('^modified\\s\\+\\(.\\+\\)$'),
+    vim.regex('^deleted\\s\\+\\(.\\+\\)$'),
+  }
+  
+  for _, pattern in ipairs(patterns) do
+    local match = pattern:match_str(line)
+    if match then
+      -- Extract the filename part
+      return line:match("^%w+%s+(.+)$")
+    end
+  end
+  
+  return nil
 end
 
 -- Remove added lines from a file (restore to previous state)

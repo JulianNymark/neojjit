@@ -75,12 +75,24 @@ function M.parse_line(line, line_num)
   local color_start_col = nil
   local bold = false
 
-  -- Pattern to match ANSI escape sequences
-  -- ESC[...m format where ESC is \27 or \x1b
+  -- Regex pattern to match ANSI escape sequences: ESC[...m
+  local ansi_re = vim.regex('\\e\\[\\([0-9;]*\\)m')
+  
   local pos = 1
   while pos <= #line do
     -- Look for ANSI escape sequence
-    local esc_start, esc_end, codes = line:find("\27%[([%d;]*)m", pos)
+    local esc_start, esc_end = ansi_re:match_str(line:sub(pos))
+    if esc_start then
+      -- Adjust positions to be relative to full line
+      esc_start = esc_start + pos
+      esc_end = esc_end + pos - 1
+    end
+    
+    -- Extract codes from between ESC[ and m
+    local codes = nil
+    if esc_start then
+      codes = line:sub(esc_start + 2, esc_end - 1)
+    end
 
     if not esc_start then
       -- No more escape sequences, add rest of line
@@ -222,6 +234,7 @@ function M.strip_ansi(str)
     return ""
   end
   -- Remove ANSI escape sequences (ESC[...m format)
+  -- Using Lua pattern matching is fine here as we're just removing them
   return str:gsub("\27%[[%d;]*m", "")
 end
 

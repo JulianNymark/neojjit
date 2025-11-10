@@ -65,17 +65,18 @@ function M.describe(callback)
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
       -- Remove comment lines (lines starting with # or JJ:)
+      local comment_re = vim.regex('^\\(#\\|JJ:\\)')
       local filtered_lines = {}
       for _, line in ipairs(lines) do
-        if not line:match("^#") and not line:match("^JJ:") then
+        if not comment_re:match_str(line) then
           table.insert(filtered_lines, line)
         end
       end
 
       local description = table.concat(filtered_lines, "\n")
 
-      -- Remove empty lines from beginning and end
-      description = description:gsub("^%s*", ""):gsub("%s*$", "")
+      -- Trim whitespace from beginning and end
+      description = vim.trim(description)
 
       if description == "" then
         vim.notify("Empty description, aborting", vim.log.levels.WARN)
@@ -164,17 +165,18 @@ function M.commit(callback)
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
       -- Remove comment lines
+      local comment_re = vim.regex('^#')
       local filtered_lines = {}
       for _, line in ipairs(lines) do
-        if not line:match("^#") then
+        if not comment_re:match_str(line) then
           table.insert(filtered_lines, line)
         end
       end
 
       local description = table.concat(filtered_lines, "\n")
 
-      -- Remove empty lines from beginning and end
-      description = description:gsub("^%s*", ""):gsub("%s*$", "")
+      -- Trim whitespace from beginning and end
+      description = vim.trim(description)
 
       if description == "" then
         vim.notify("Empty description, aborting", vim.log.levels.WARN)

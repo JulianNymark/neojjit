@@ -8,10 +8,10 @@ local ansi = require("neojjit.ansi")
 -- Current state
 local state = {
   bufnr = nil,
-  log_lines = {}, -- Raw log output with ANSI colors
+  log_lines = {},         -- Raw log output with ANSI colors
   line_to_change_id = {}, -- Map buffer line number to change ID
   line_to_commit_id = {}, -- Map buffer line number to commit ID
-  entry_lines = {}, -- List of line numbers that are log entry headers
+  entry_lines = {},       -- List of line numbers that are log entry headers
 }
 
 -- Extract change ID and commit ID from a log line
@@ -20,20 +20,50 @@ local function extract_ids_from_line(line, line_index)
   -- Strip ANSI codes for parsing
   local clean_line = ansi.strip_ansi(line)
 
-  -- Log entries alternate: line 1 is commit, line 2 is description, line 3 is commit, etc.
-  -- So odd-numbered lines (1, 3, 5, ...) are commit entries
-  local is_entry_line = (line_index % 2) == 1
+  -- Detect if this is a commit entry line by checking for graph symbols
+  -- Commit lines start with: @ (working copy, ASCII) or ◆ (regular commit, UTF-8: \xE2\x97\x86)
+  -- Description lines start with: │ (vertical bar, UTF-8: \xE2\x94\x82)
+  -- Elided commits start with: ~ (tilde, ASCII)
+
+  -- Check first few bytes for commit markers
+  -- @ is 0x40, ◆ is UTF-8 0xE2 0x97 0x86
+  local first_byte = clean_line:byte(1)
+  local is_entry_line = false
+
+  if first_byte == 0x40 then     -- '@' character
+    is_entry_line = true
+  elseif first_byte == 0xE2 then -- Potential UTF-8 multi-byte char
+    local second_byte = clean_line:byte(2)
+    local third_byte = clean_line:byte(3)
+    -- ◆ (diamond) is 0xE2 0x97 0x86
+    if second_byte == 0x97 and third_byte == 0x86 then
+      is_entry_line = true
+    end
+  end
 
   if not is_entry_line then
     return nil, nil, false
   end
 
-  -- Look for: any leading chars + 2 spaces + 8-char change ID + space
-  -- The ^.-  matches any characters non-greedily (handles UTF-8 symbols)
-  local change_id = clean_line:match("^.-%s%s(%w%w%w%w%w%w%w%w)%s")
+  -- Look for: graph symbol + spaces + 8-char change ID + space
+  -- After @ or ◆, there are usually 2 spaces, then the 8-char change ID
+  local change_id_pattern = vim.regex('\\s\\s\\(\\w\\{8}\\)\\s')
+  local change_id_match = change_id_pattern:match_str(clean_line)
+  local change_id = nil
+  if change_id_match then
+    -- Extract the captured group (8 chars after 2 spaces)
+    local start_pos = change_id_match + 2  -- Skip 2 spaces
+    change_id = clean_line:sub(start_pos + 1, start_pos + 8)
+  end
 
   -- Look for commit_id (8-char hex at the end of the line)
-  local commit_id = clean_line:match("([%da-f]%w%w%w%w%w%w%w)%s*$")
+  local commit_id_pattern = vim.regex('\\([0-9a-f]\\{8}\\)\\s*$')
+  local commit_id_match = commit_id_pattern:match_str(clean_line)
+  local commit_id = nil
+  if commit_id_match then
+    -- Extract the 8-char hex
+    commit_id = clean_line:sub(commit_id_match + 1, commit_id_match + 8)
+  end
 
   return change_id, commit_id, true
 end
