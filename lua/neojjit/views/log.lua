@@ -48,10 +48,7 @@ local function generate_content()
 
   -- Header (no ANSI codes in header)
   table.insert(lines, "Log View")
-  table.insert(
-    lines,
-    "Hint: j/k navigate | y copy change ID | g copy commit hash | b set bookmark | q quit | <C-r> refresh"
-  )
+  table.insert(lines, "Hint: j/k navigate | b set bookmark | q quit ")
   table.insert(lines, "")
 
   if #state.log_lines == 0 then

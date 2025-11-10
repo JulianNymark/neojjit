@@ -92,7 +92,12 @@ end
 
 -- Show help popup
 function M.help()
-  help.show()
+	help.show()
+end
+
+-- Show log help popup
+function M.log_help()
+	help.show("log")
 end
 
 -- Show log view
