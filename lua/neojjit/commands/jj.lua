@@ -301,6 +301,23 @@ function M.restore(filepaths)
   return result
 end
 
+-- Restore (discard changes) for one or more files with --ignore-immutable flag
+function M.restore_force(filepaths)
+  if type(filepaths) == "string" then
+    filepaths = { filepaths }
+  end
+
+  local args = { "restore", "--ignore-immutable" }
+  vim.list_extend(args, filepaths)
+
+  local result = M.execute(args)
+  if result then
+    local file_list = table.concat(filepaths, ", ")
+    vim.notify(string.format("Restored (force): %s", file_list), vim.log.levels.INFO)
+  end
+  return result
+end
+
 -- Push changes to remote
 function M.push()
   local result = M.execute({ "git", "push" })
@@ -337,6 +354,16 @@ function M.set_bookmark(bookmark_name, change_id)
   return result
 end
 
+-- Set bookmark on a specific change with --allow-backwards flag
+function M.set_bookmark_force(bookmark_name, change_id)
+  local args = { "bookmark", "set", bookmark_name, "-r", change_id, "--allow-backwards" }
+  local result = M.execute(args)
+  if result then
+    vim.notify(string.format("Set bookmark (force) '%s' on %s", bookmark_name, change_id), vim.log.levels.INFO)
+  end
+  return result
+end
+
 -- Edit a specific change (set working copy to that change)
 function M.edit(change_id)
   local args = { "edit", change_id }
@@ -347,12 +374,31 @@ function M.edit(change_id)
   return result
 end
 
+-- Edit a specific change with --ignore-immutable flag
+function M.edit_force(change_id)
+  local args = { "edit", change_id, "--ignore-immutable" }
+  local result = M.execute(args)
+  if result then
+    vim.notify(string.format("Now editing (force) %s", change_id), vim.log.levels.INFO)
+  end
+  return result
+end
+
 -- Create new change on top of a specific change
 function M.new_on_change(change_id)
   local args = { "new", change_id }
   local result = M.execute(args)
   if result then
     vim.notify(string.format("Created new change on %s", change_id), vim.log.levels.INFO)
+  end
+  return result
+end
+
+-- Undo the last operation
+function M.undo()
+  local result = M.execute({ "undo" })
+  if result then
+    vim.notify("Undid last operation", vim.log.levels.INFO)
   end
   return result
 end

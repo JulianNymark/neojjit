@@ -13,9 +13,11 @@ local status_help_sections = {
 		"l Log",
 		"p Pull",
 		"P Push",
+		"u Undo",
 	},
 	manipulate_changes = {
 		"x Discard",
+		"X Discard (force)",
 		"s squash (TBD)",
 		"S Split (TBD)",
 	},
@@ -36,10 +38,13 @@ local log_help_sections = {
 	},
 	commands = {
 		"e Edit change",
+		"E Edit (force)",
 		"n New change",
 		"y Copy change ID",
 		"g Copy commit hash",
 		"b Set bookmark",
+		"B Set bookmark (backwards)",
+		"u Undo",
 	},
 	essential = {
 		"<C-r> Refresh",

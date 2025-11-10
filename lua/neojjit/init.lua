@@ -82,12 +82,25 @@ function M.restore()
   status_view.restore()
 end
 
+-- Restore (discard) changes for file(s) with --ignore-immutable flag
+function M.restore_force()
+  status_view.restore_force()
+end
+
 -- Restore (discard) changes for visual selection
 function M.restore_visual()
   -- Get the visual selection marks
   local start_line = vim.fn.line("'<")
   local end_line = vim.fn.line("'>")
   status_view.restore(start_line, end_line)
+end
+
+-- Restore (discard) changes for visual selection with --ignore-immutable flag
+function M.restore_force_visual()
+  -- Get the visual selection marks
+  local start_line = vim.fn.line("'<")
+  local end_line = vim.fn.line("'>")
+  status_view.restore_force(start_line, end_line)
 end
 
 -- Show help popup
@@ -120,9 +133,19 @@ function M.log_set_bookmark()
   log_view.set_bookmark()
 end
 
+-- Log view: set bookmark with --allow-backwards flag
+function M.log_set_bookmark_force()
+  log_view.set_bookmark_force()
+end
+
 -- Log view: edit change
 function M.log_edit()
   log_view.edit_change()
+end
+
+-- Log view: edit change with --ignore-immutable flag
+function M.log_edit_force()
+  log_view.edit_change_force()
 end
 
 -- Log view: new change
@@ -162,6 +185,20 @@ function M.pull()
   jj.pull()
   -- Refresh status after pull completes
   status_view.refresh()
+end
+
+-- Undo last operation (status view)
+function M.undo()
+  jj.undo()
+  -- Refresh status after undo completes
+  status_view.refresh()
+end
+
+-- Undo last operation (log view)
+function M.log_undo()
+  jj.undo()
+  -- Refresh log after undo completes
+  log_view.refresh()
 end
 
 return M

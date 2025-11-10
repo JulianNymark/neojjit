@@ -207,6 +207,39 @@ function M.set_bookmark()
   end)
 end
 
+-- Set bookmark on current entry with --allow-backwards flag
+function M.set_bookmark_force()
+  local change_id = get_current_change_id()
+  if not change_id then
+    vim.notify("No change ID on current line", vim.log.levels.WARN)
+    return
+  end
+
+  -- Prompt for bookmark name
+  vim.ui.input({
+    prompt = string.format("Set bookmark (force) on %s (default: main): ", change_id),
+  }, function(input)
+    -- User cancelled
+    if input == nil then
+      vim.notify("Cancelled", vim.log.levels.INFO)
+      return
+    end
+
+    -- Use default if empty
+    local bookmark_name = input
+    if bookmark_name == "" then
+      bookmark_name = "main"
+    end
+
+    -- Set the bookmark with force
+    local result = jj.set_bookmark_force(bookmark_name, change_id)
+    if result then
+      -- Refresh the log view
+      M.refresh()
+    end
+  end)
+end
+
 -- Edit (switch working copy to) current entry
 function M.edit_change()
   local change_id = get_current_change_id()
@@ -217,6 +250,22 @@ function M.edit_change()
 
   -- Edit the change
   local result = jj.edit(change_id)
+  if result then
+    -- Refresh log view to show updated state
+    M.refresh()
+  end
+end
+
+-- Edit (switch working copy to) current entry with --ignore-immutable flag
+function M.edit_change_force()
+  local change_id = get_current_change_id()
+  if not change_id then
+    vim.notify("No change ID on current line", vim.log.levels.WARN)
+    return
+  end
+
+  -- Edit the change with force
+  local result = jj.edit_force(change_id)
   if result then
     -- Refresh log view to show updated state
     M.refresh()

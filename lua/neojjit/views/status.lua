@@ -366,15 +366,15 @@ function M.restore(start_line, end_line)
 
   -- Check if any selected lines are in diff sections
   local has_diff_lines = false
+  local diff_filenames = {} -- Track which files are involved in the diff selection
   for line_num = first_line, last_line do
     local meta = state.line_metadata[line_num]
 
     if config.values.debug then
       vim.notify(
-        string.format("[RESTORE] Total metadata entries: %d", vim.tbl_count(state.line_metadata)),
+        string.format("[RESTORE] Line %d metadata: %s", line_num, meta and meta.type or "nil"),
         vim.log.levels.DEBUG
       )
-      vim.notify(string.format("[RESTORE] Has diff lines: %s", has_diff_lines), vim.log.levels.DEBUG)
     end
 
     if meta and meta.type == "added" then
@@ -384,18 +384,27 @@ function M.restore(start_line, end_line)
         diff_lines_to_delete[filename] = {}
       end
       table.insert(diff_lines_to_delete[filename], meta.file_line)
+      diff_filenames[filename] = true
+    elseif meta and (meta.type == "context" or meta.type == "removed" or meta.type == "header" or meta.type == "other") and meta.filename then
+      -- Track files that have diff context selected, even if not "added" lines
+      diff_filenames[meta.filename] = true
     end
   end
 
   if config.values.debug then
     vim.notify(
-      string.format("[DELETE] Total metadata entries: %d", vim.tbl_count(state.line_metadata)),
+      string.format("[RESTORE] Total metadata entries: %d", vim.tbl_count(state.line_metadata)),
       vim.log.levels.DEBUG
     )
-    vim.notify(string.format("[DELETE] Has diff lines: %s", has_diff_lines), vim.log.levels.DEBUG)
+    vim.notify(string.format("[RESTORE] Has diff lines: %s", has_diff_lines), vim.log.levels.DEBUG)
+    local filenames = {}
+    for fname, _ in pairs(diff_filenames) do
+      table.insert(filenames, fname)
+    end
+    vim.notify(string.format("[RESTORE] Diff filenames: %s", table.concat(filenames, ", ")), vim.log.levels.DEBUG)
   end
 
-  -- If we have diff lines to delete, handle partial deletion
+  -- If we have specific added lines to delete, handle partial deletion
   if has_diff_lines then
     local file_list = {}
     local total_lines = 0
@@ -404,29 +413,27 @@ function M.restore(start_line, end_line)
       total_lines = total_lines + #line_nums
     end
 
-    local prompt =
-      string.format("Discard %d added line(s) from:\n  %s\n(y/n) ", total_lines, table.concat(file_list, "\n  "))
+    local message = string.format("Discard %d added line(s) from:\n  %s", total_lines, table.concat(file_list, "\n  "))
+    local choice = vim.fn.confirm(message, "&Yes\n&No", 2)
 
-    vim.ui.input({ prompt = prompt }, function(input)
-      if input and (input:lower() == "y" or input:lower() == "yes") then
-        local success = true
-        for filename, line_nums in pairs(diff_lines_to_delete) do
-          if not remove_lines_from_file(filename, line_nums) then
-            success = false
-          end
+    if choice == 1 then
+      local success = true
+      for filename, line_nums in pairs(diff_lines_to_delete) do
+        if not remove_lines_from_file(filename, line_nums) then
+          success = false
         end
-
-        if success then
-          vim.notify(string.format("Deleted %d line(s)", total_lines), vim.log.levels.INFO)
-          -- Refresh the view
-          vim.defer_fn(function()
-            M.refresh()
-          end, 100)
-        end
-      else
-        vim.notify("Cancelled", vim.log.levels.INFO)
       end
-    end)
+
+      if success then
+        vim.notify(string.format("Deleted %d line(s)", total_lines), vim.log.levels.INFO)
+        -- Refresh the view
+        vim.defer_fn(function()
+          M.refresh()
+        end, 100)
+      end
+    else
+      vim.notify("Cancelled", vim.log.levels.INFO)
+    end
     return
   end
 
@@ -439,26 +446,165 @@ function M.restore(start_line, end_line)
     end
   end
 
+  -- If we didn't find files in file lines, check if we have diff context selected
+  if #files_to_restore == 0 and next(diff_filenames) ~= nil then
+    for filename, _ in pairs(diff_filenames) do
+      table.insert(files_to_restore, filename)
+    end
+  end
+
   -- If we found files, ask for confirmation and restore them
   if #files_to_restore > 0 then
     local file_list = table.concat(files_to_restore, "\n  ")
-    local prompt = string.format("Discard changes for:\n  %s\n(y/n) ", file_list)
+    local message = string.format("Discard changes for:\n  %s", file_list)
+    local choice = vim.fn.confirm(message, "&Yes\n&No", 2)
 
-    vim.ui.input({ prompt = prompt }, function(input)
-      if input and (input:lower() == "y" or input:lower() == "yes") then
-        local result = jj.restore(files_to_restore)
-        if result then
-          -- Remove files from expanded state
-          for _, file in ipairs(files_to_restore) do
-            state.expanded[file] = nil
-          end
-          -- Refresh the view
-          M.refresh()
+    if choice == 1 then
+      local result = jj.restore(files_to_restore)
+      if result then
+        -- Remove files from expanded state
+        for _, file in ipairs(files_to_restore) do
+          state.expanded[file] = nil
         end
-      else
-        vim.notify("Cancelled", vim.log.levels.INFO)
+        -- Refresh the view
+        M.refresh()
       end
-    end)
+    else
+      vim.notify("Cancelled", vim.log.levels.INFO)
+    end
+  else
+    vim.notify("No file or diff lines found in selection", vim.log.levels.WARN)
+  end
+end
+
+-- Restore (discard) changes for file(s) with --ignore-immutable flag
+-- start_line and end_line are optional for visual mode selection
+function M.restore_force(start_line, end_line)
+  if not state.bufnr or not vim.api.nvim_buf_is_valid(state.bufnr) then
+    return
+  end
+
+  local files_to_restore = {}
+  local diff_lines_to_delete = {} -- { filename -> {line_numbers} }
+
+  -- Determine line range
+  local first_line, last_line
+  if start_line and end_line then
+    first_line = math.min(start_line, end_line)
+    last_line = math.max(start_line, end_line)
+  else
+    first_line = vim.api.nvim_win_get_cursor(0)[1]
+    last_line = first_line
+  end
+
+  -- Check if any selected lines are in diff sections
+  local has_diff_lines = false
+  local diff_filenames = {} -- Track which files are involved in the diff selection
+  for line_num = first_line, last_line do
+    local meta = state.line_metadata[line_num]
+
+    if config.values.debug then
+      vim.notify(
+        string.format("[RESTORE_FORCE] Line %d metadata: %s", line_num, meta and meta.type or "nil"),
+        vim.log.levels.DEBUG
+      )
+    end
+
+    if meta and meta.type == "added" then
+      has_diff_lines = true
+      local filename = meta.filename
+      if not diff_lines_to_delete[filename] then
+        diff_lines_to_delete[filename] = {}
+      end
+      table.insert(diff_lines_to_delete[filename], meta.file_line)
+      diff_filenames[filename] = true
+    elseif meta and (meta.type == "context" or meta.type == "removed" or meta.type == "header" or meta.type == "other") and meta.filename then
+      -- Track files that have diff context selected, even if not "added" lines
+      diff_filenames[meta.filename] = true
+    end
+  end
+
+  if config.values.debug then
+    vim.notify(
+      string.format("[RESTORE_FORCE] Total metadata entries: %d", vim.tbl_count(state.line_metadata)),
+      vim.log.levels.DEBUG
+    )
+    vim.notify(string.format("[RESTORE_FORCE] Has diff lines: %s", has_diff_lines), vim.log.levels.DEBUG)
+    local filenames = {}
+    for fname, _ in pairs(diff_filenames) do
+      table.insert(filenames, fname)
+    end
+    vim.notify(string.format("[RESTORE_FORCE] Diff filenames: %s", table.concat(filenames, ", ")), vim.log.levels.DEBUG)
+  end
+
+  -- If we have specific added lines to delete, handle partial deletion
+  if has_diff_lines then
+    local file_list = {}
+    local total_lines = 0
+    for filename, line_nums in pairs(diff_lines_to_delete) do
+      table.insert(file_list, string.format("%s (%d lines)", filename, #line_nums))
+      total_lines = total_lines + #line_nums
+    end
+
+    local message = string.format("Discard (force) %d added line(s) from:\n  %s", total_lines, table.concat(file_list, "\n  "))
+    local choice = vim.fn.confirm(message, "&Yes\n&No", 2)
+
+    if choice == 1 then
+      local success = true
+      for filename, line_nums in pairs(diff_lines_to_delete) do
+        if not remove_lines_from_file(filename, line_nums) then
+          success = false
+        end
+      end
+
+      if success then
+        vim.notify(string.format("Deleted %d line(s)", total_lines), vim.log.levels.INFO)
+        -- Refresh the view
+        vim.defer_fn(function()
+          M.refresh()
+        end, 100)
+      end
+    else
+      vim.notify("Cancelled", vim.log.levels.INFO)
+    end
+    return
+  end
+
+  -- Otherwise, handle file-level deletion
+  local lines = vim.api.nvim_buf_get_lines(state.bufnr, first_line - 1, last_line, false)
+  for _, line in ipairs(lines) do
+    local filename = extract_filename(line)
+    if filename then
+      table.insert(files_to_restore, filename)
+    end
+  end
+
+  -- If we didn't find files in file lines, check if we have diff context selected
+  if #files_to_restore == 0 and next(diff_filenames) ~= nil then
+    for filename, _ in pairs(diff_filenames) do
+      table.insert(files_to_restore, filename)
+    end
+  end
+
+  -- If we found files, ask for confirmation and restore them
+  if #files_to_restore > 0 then
+    local file_list = table.concat(files_to_restore, "\n  ")
+    local message = string.format("Discard changes (force) for:\n  %s", file_list)
+    local choice = vim.fn.confirm(message, "&Yes\n&No", 2)
+
+    if choice == 1 then
+      local result = jj.restore_force(files_to_restore)
+      if result then
+        -- Remove files from expanded state
+        for _, file in ipairs(files_to_restore) do
+          state.expanded[file] = nil
+        end
+        -- Refresh the view
+        M.refresh()
+      end
+    else
+      vim.notify("Cancelled", vim.log.levels.INFO)
+    end
   else
     vim.notify("No file or diff lines found in selection", vim.log.levels.WARN)
   end
@@ -510,6 +656,15 @@ function M.open()
       "v",
       "x",
       ":<C-u>lua require('neojjit').restore_visual()<CR>",
+      { noremap = true, silent = true }
+    )
+    
+    -- Add visual mode mapping for restore_force
+    vim.api.nvim_buf_set_keymap(
+      state.bufnr,
+      "v",
+      "X",
+      ":<C-u>lua require('neojjit').restore_force_visual()<CR>",
       { noremap = true, silent = true }
     )
   end
