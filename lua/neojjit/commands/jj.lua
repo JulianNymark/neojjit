@@ -63,7 +63,16 @@ function M.describe(callback)
     callback = function()
       -- Get the description from buffer
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-      local description = table.concat(lines, "\n")
+
+      -- Remove comment lines (lines starting with # or JJ:)
+      local filtered_lines = {}
+      for _, line in ipairs(lines) do
+        if not line:match("^#") and not line:match("^JJ:") then
+          table.insert(filtered_lines, line)
+        end
+      end
+
+      local description = table.concat(filtered_lines, "\n")
 
       -- Remove empty lines from beginning and end
       description = description:gsub("^%s*", ""):gsub("%s*$", "")
@@ -111,8 +120,8 @@ function M.describe(callback)
   -- Add instructions as comments
   vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, {
     "",
-    "# Edit the description above",
-    "# Save and close (:wq) to apply, or just close (:q) to cancel",
+    "JJ: Saving (:w) will automatically close this buffer",
+    "JJ: If you saved before you were finished describing you can invoke describe again",
   })
 
   -- Start in insert mode
