@@ -21,12 +21,15 @@ local function extract_ids_from_line(line, line_index)
   local clean_line = ansi.strip_ansi(line)
 
   -- Detect if this is a commit entry line by checking for graph symbols
-  -- Commit lines start with: @ (working copy, ASCII) or ◆ (regular commit, UTF-8: \xE2\x97\x86)
+  -- Commit lines start with:
+  --   @ (working copy, ASCII)
+  --   ◆ (regular commit, UTF-8: \xE2\x97\x86)
+  --   ○ (open circle/commit, UTF-8: \xE2\x97\x8B)
   -- Description lines start with: │ (vertical bar, UTF-8: \xE2\x94\x82)
   -- Elided commits start with: ~ (tilde, ASCII)
 
   -- Check first few bytes for commit markers
-  -- @ is 0x40, ◆ is UTF-8 0xE2 0x97 0x86
+  -- @ is 0x40, ◆ is UTF-8 0xE2 0x97 0x86, ○ is UTF-8 0xE2 0x97 0x8B
   local first_byte = clean_line:byte(1)
   local is_entry_line = false
 
@@ -36,7 +39,8 @@ local function extract_ids_from_line(line, line_index)
     local second_byte = clean_line:byte(2)
     local third_byte = clean_line:byte(3)
     -- ◆ (diamond) is 0xE2 0x97 0x86
-    if second_byte == 0x97 and third_byte == 0x86 then
+    -- ○ (open circle) is 0xE2 0x97 0x8B
+    if second_byte == 0x97 and (third_byte == 0x86 or third_byte == 0x8B) then
       is_entry_line = true
     end
   end

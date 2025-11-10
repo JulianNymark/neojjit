@@ -267,6 +267,26 @@ local function generate_content()
   return lines
 end
 
+-- Extract filename from a status line
+local function extract_filename(line)
+  -- Compile patterns once (they're static)
+  local patterns = {
+    vim.regex('^added\\s\\+\\(.\\+\\)$'),
+    vim.regex('^modified\\s\\+\\(.\\+\\)$'),
+    vim.regex('^deleted\\s\\+\\(.\\+\\)$'),
+  }
+  
+  for _, pattern in ipairs(patterns) do
+    local match = pattern:match_str(line)
+    if match then
+      -- Extract the filename part
+      return line:match("^%w+%s+(.+)$")
+    end
+  end
+  
+  return nil
+end
+
 -- Toggle diff for file under cursor
 function M.toggle()
   if not state.bufnr or not vim.api.nvim_buf_is_valid(state.bufnr) then
@@ -301,26 +321,6 @@ function M.toggle()
       ansi.apply_highlights(state.bufnr, state.highlights, status_namespace)
     end
   end
-end
-
--- Extract filename from a status line
-local function extract_filename(line)
-  -- Compile patterns once (they're static)
-  local patterns = {
-    vim.regex('^added\\s\\+\\(.\\+\\)$'),
-    vim.regex('^modified\\s\\+\\(.\\+\\)$'),
-    vim.regex('^deleted\\s\\+\\(.\\+\\)$'),
-  }
-  
-  for _, pattern in ipairs(patterns) do
-    local match = pattern:match_str(line)
-    if match then
-      -- Extract the filename part
-      return line:match("^%w+%s+(.+)$")
-    end
-  end
-  
-  return nil
 end
 
 -- Remove added lines from a file (restore to previous state)
