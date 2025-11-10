@@ -11,8 +11,8 @@ local state = {
   bufnr = nil,
   working_copy = nil,
   changes = {},
-  expanded = {},      -- Track which files have diffs expanded
-  highlights = {},    -- Store ANSI highlights to apply after rendering
+  expanded = {},     -- Track which files have diffs expanded
+  highlights = {},   -- Store ANSI highlights to apply after rendering
   line_metadata = {}, -- Map buffer line number to metadata { type, filename, diff_line, content }
 }
 
@@ -48,8 +48,10 @@ local function parse_status(lines)
   end
 
   if config.values.debug then
-    vim.notify(string.format("[STATUS] Parsed %d changes, working copy: %s", #changes, working_copy),
-      vim.log.levels.DEBUG)
+    vim.notify(
+      string.format("[STATUS] Parsed %d changes, working copy: %s", #changes, working_copy),
+      vim.log.levels.DEBUG
+    )
   end
 
   return changes, working_copy
@@ -65,7 +67,10 @@ local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
     local buffer_line = start_buffer_line + i
 
     if config.values.debug then
-      vim.notify(string.format("[PARSE] Line %d (buf %d): '%s'", i, buffer_line, line:sub(1, 50)), vim.log.levels.DEBUG)
+      vim.notify(
+        string.format("[PARSE] Line %d (buf %d): '%s'", i, buffer_line, line:sub(1, 50)),
+        vim.log.levels.DEBUG
+      )
     end
 
     -- Check if this is a header line (e.g., "Modified regular file test.txt:")
@@ -96,8 +101,10 @@ local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
           content = content,
         }
         if config.values.debug then
-          vim.notify(string.format("[PARSE] Context (fmt1) %d: old=%s new=%s", buffer_line, old_num, new_num),
-            vim.log.levels.DEBUG)
+          vim.notify(
+            string.format("[PARSE] Context (fmt1) %d: old=%s new=%s", buffer_line, old_num, new_num),
+            vim.log.levels.DEBUG
+          )
         end
       else
         -- Try Format 2 (without colon) - difftastic
@@ -111,8 +118,10 @@ local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
             content = content,
           }
           if config.values.debug then
-            vim.notify(string.format("[PARSE] Context (difft) %d: old=%s new=%s", buffer_line, old_num, new_num),
-              vim.log.levels.DEBUG)
+            vim.notify(
+              string.format("[PARSE] Context (difft) %d: old=%s new=%s", buffer_line, old_num, new_num),
+              vim.log.levels.DEBUG
+            )
           end
         else
           -- Try added line with colon
@@ -125,7 +134,10 @@ local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
               content = content,
             }
             if config.values.debug then
-              vim.notify(string.format("[PARSE] Added (fmt1) %d: new=%s", buffer_line, new_num), vim.log.levels.DEBUG)
+              vim.notify(
+                string.format("[PARSE] Added (fmt1) %d: new=%s", buffer_line, new_num),
+                vim.log.levels.DEBUG
+              )
             end
           else
             -- Try added line without colon (difftastic)
@@ -138,7 +150,10 @@ local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
                 content = content,
               }
               if config.values.debug then
-                vim.notify(string.format("[PARSE] Added (difft) %d: new=%s", buffer_line, new_num), vim.log.levels.DEBUG)
+                vim.notify(
+                  string.format("[PARSE] Added (difft) %d: new=%s", buffer_line, new_num),
+                  vim.log.levels.DEBUG
+                )
               end
             else
               -- Try removed line (only old number)
@@ -150,7 +165,10 @@ local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
                   content = content,
                 }
                 if config.values.debug then
-                  vim.notify(string.format("[PARSE] Removed %d: old=%s", buffer_line, old_num), vim.log.levels.DEBUG)
+                  vim.notify(
+                    string.format("[PARSE] Removed %d: old=%s", buffer_line, old_num),
+                    vim.log.levels.DEBUG
+                  )
                 end
               else
                 -- Other line
@@ -168,8 +186,10 @@ local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
   end
 
   if config.values.debug then
-    vim.notify(string.format("[PARSE] Parsed %d metadata entries for %s", vim.tbl_count(metadata), filename),
-      vim.log.levels.DEBUG)
+    vim.notify(
+      string.format("[PARSE] Parsed %d metadata entries for %s", vim.tbl_count(metadata), filename),
+      vim.log.levels.DEBUG
+    )
   end
 
   return metadata
@@ -178,7 +198,7 @@ end
 -- Generate buffer content
 local function generate_content()
   local lines = {}
-  state.highlights = {}    -- Reset highlights
+  state.highlights = {}   -- Reset highlights
   state.line_metadata = {} -- Reset line metadata
 
   -- Header with keybindings hint
@@ -262,17 +282,17 @@ function M.toggle()
   local line = vim.api.nvim_buf_get_lines(state.bufnr, line_num - 1, line_num, false)[1]
 
   -- Extract filename from status line (format: "status     filename")
-  local filename = line:match("^added%s+(.+)$") or
-    line:match("^modified%s+(.+)$") or
-    line:match("^deleted%s+(.+)$")
+  local filename = line:match("^added%s+(.+)$") or line:match("^modified%s+(.+)$") or line:match("^deleted%s+(.+)$")
 
   if filename then
     -- Toggle expansion state
     state.expanded[filename] = not state.expanded[filename]
 
     if config.values.debug then
-      vim.notify(string.format("[STATUS] Toggled diff for %s: %s", filename, state.expanded[filename]),
-        vim.log.levels.DEBUG)
+      vim.notify(
+        string.format("[STATUS] Toggled diff for %s: %s", filename, state.expanded[filename]),
+        vim.log.levels.DEBUG
+      )
     end
 
     -- Re-render
@@ -288,9 +308,7 @@ end
 
 -- Extract filename from a status line
 local function extract_filename(line)
-  return line:match("^added%s+(.+)$") or
-    line:match("^modified%s+(.+)$") or
-    line:match("^deleted%s+(.+)$")
+  return line:match("^added%s+(.+)$") or line:match("^modified%s+(.+)$") or line:match("^deleted%s+(.+)$")
 end
 
 -- Remove added lines from a file (restore to previous state)
@@ -310,7 +328,9 @@ local function remove_lines_from_file(filename, line_numbers)
   file:close()
 
   -- Remove lines in reverse order to preserve line numbers
-  table.sort(line_numbers, function(a, b) return a > b end)
+  table.sort(line_numbers, function(a, b)
+    return a > b
+  end)
   for _, line_num in ipairs(line_numbers) do
     if line_num > 0 and line_num <= #file_lines then
       table.remove(file_lines, line_num)
@@ -358,8 +378,10 @@ function M.restore(start_line, end_line)
     local meta = state.line_metadata[line_num]
 
     if config.values.debug then
-      vim.notify(string.format("[RESTORE] Total metadata entries: %d", vim.tbl_count(state.line_metadata)),
-        vim.log.levels.DEBUG)
+      vim.notify(
+        string.format("[RESTORE] Total metadata entries: %d", vim.tbl_count(state.line_metadata)),
+        vim.log.levels.DEBUG
+      )
       vim.notify(string.format("[RESTORE] Has diff lines: %s", has_diff_lines), vim.log.levels.DEBUG)
     end
 
@@ -374,8 +396,10 @@ function M.restore(start_line, end_line)
   end
 
   if config.values.debug then
-    vim.notify(string.format("[DELETE] Total metadata entries: %d", vim.tbl_count(state.line_metadata)),
-      vim.log.levels.DEBUG)
+    vim.notify(
+      string.format("[DELETE] Total metadata entries: %d", vim.tbl_count(state.line_metadata)),
+      vim.log.levels.DEBUG
+    )
     vim.notify(string.format("[DELETE] Has diff lines: %s", has_diff_lines), vim.log.levels.DEBUG)
   end
 
@@ -388,8 +412,8 @@ function M.restore(start_line, end_line)
       total_lines = total_lines + #line_nums
     end
 
-    local prompt = string.format("Discard %d added line(s) from:\n  %s\n(y/n) ",
-      total_lines, table.concat(file_list, "\n  "))
+    local prompt =
+        string.format("Discard %d added line(s) from:\n  %s\n(y/n) ", total_lines, table.concat(file_list, "\n  "))
 
     vim.ui.input({ prompt = prompt }, function(input)
       if input and (input:lower() == "y" or input:lower() == "yes") then

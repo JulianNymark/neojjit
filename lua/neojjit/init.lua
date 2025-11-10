@@ -48,7 +48,7 @@ function M.describe()
   jj.describe(function()
     -- Refresh status view after description is updated
     status_view.refresh()
-    
+
     -- If auto_close is false, re-open the status view
     if not config.values.auto_close then
       status_view.open()
@@ -68,7 +68,7 @@ function M.commit()
   jj.commit(function()
     -- Refresh status view after commit is completed
     status_view.refresh()
-    
+
     -- If auto_close is false, re-open the status view
     if not config.values.auto_close then
       status_view.open()
@@ -97,6 +97,20 @@ end
 -- Show log (stub for now)
 function M.log()
   vim.notify("Log view not yet implemented", vim.log.levels.INFO)
+end
+
+-- Push changes to remote
+function M.push()
+  jj.push()
+  -- Refresh status after push completes
+  status_view.refresh()
+end
+
+-- Pull changes from remote
+function M.pull()
+  jj.pull()
+  -- Refresh status after pull completes
+  status_view.refresh()
 end
 
 return M

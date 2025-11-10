@@ -4,6 +4,57 @@ local M = {}
 local help_bufnr = nil
 local help_winnr = nil
 
+-- Help sections - each entry is a command description
+local help_sections = {
+ 	commands = {
+    "d Describe",
+    "n New change",
+		"c Commit (d + n)",
+		"l Log (TBD)",
+		"p Pull",
+		"P Push",
+	},
+	manipulate_changes = {
+		"x Discard",
+    "s squash ()",
+    "S Split (TBD)"
+	},
+	essential = {
+		"<C-r> Refresh",
+		"<Tab> Toggle diff",
+		"<CR> Go to file",
+		"? Help",
+		"q Quit",
+	},
+}
+
+-- Build help content from sections
+local function build_help_lines()
+  local commands = help_sections.commands
+  local manipulate = help_sections.manipulate_changes
+  local essential = help_sections.essential
+
+  -- Find the maximum number of rows needed
+  local max_rows = math.max(#commands, #manipulate, #essential)
+
+  -- Build header
+  local lines = {
+    string.format(" %-22s %-23s Essential commands      ", "Commands", "Manipulate changes")
+  }
+
+  -- Build rows
+  for i = 1, max_rows do
+    local col1 = commands[i] or ""
+    local col2 = manipulate[i] or ""
+    local col3 = essential[i] or ""
+
+    local line = string.format(" %-22s %-23s %-24s", col1, col2, col3)
+    table.insert(lines, line)
+  end
+
+  return lines
+end
+
 -- Close help popup
 function M.close()
   if help_winnr and vim.api.nvim_win_is_valid(help_winnr) then
@@ -25,14 +76,7 @@ function M.show()
   end
 
   -- Create help content
-  local lines = {
-    " Commands                Essential commands       ",
-    " d Describe              <C-r> Refresh            ",
-    " n New change            <Tab> Toggle diff        ",
-    " c Commit                <CR> Go to file          ",
-    " x Restore/discard       ? Help                   ",
-    " l Log (TBD)             q Quit                   ",
-  }
+  local lines = build_help_lines()
 
   -- Create buffer
   help_bufnr = vim.api.nvim_create_buf(false, true)

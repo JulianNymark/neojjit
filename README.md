@@ -74,6 +74,8 @@ neojjit.open({ kind = "split" })
 2. **View status** - `:Neojjit` to see working copy changes
 3. **Describe changes** - `d` to set the commit message (runs `jj describe`)
 4. **Create new change** - `n` to create a new change on top (runs `jj new`)
+5. **Push to remote** - `P` to push changes (runs `jj git push`)
+6. **Pull from remote** - `p` to pull changes (runs `jj git fetch`)
 
 ## Key Differences from Neogit
 
@@ -114,6 +116,8 @@ require('neojjit').setup {
       ["?"] = "help",
       ["<CR>"] = "show_diff",
       ["<Tab>"] = "toggle",
+      ["p"] = "pull",
+      ["P"] = "push",
     },
   },
 }

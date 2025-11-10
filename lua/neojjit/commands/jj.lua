@@ -292,4 +292,22 @@ function M.restore(filepaths)
   return result
 end
 
+-- Push changes to remote
+function M.push()
+  local result = M.execute({ "git", "push" })
+  if result then
+    vim.notify("Pushed to remote", vim.log.levels.INFO)
+  end
+  return result
+end
+
+-- Pull changes from remote
+function M.pull()
+  local result = M.execute({ "git", "fetch" })
+  if result then
+    vim.notify("Pulled from remote", vim.log.levels.INFO)
+  end
+  return result
+end
+
 return M

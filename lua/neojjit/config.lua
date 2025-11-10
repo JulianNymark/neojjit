@@ -21,6 +21,8 @@ M.values = {
       ["?"] = "help",
       ["<CR>"] = "show_diff",
       ["<Tab>"] = "toggle",
+      ["p"] = "pull",
+      ["P"] = "push",
     },
   },
 }
