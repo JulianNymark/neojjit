@@ -88,8 +88,6 @@ function M.describe(callback)
 
       if result then
         vim.notify("Description updated", vim.log.levels.INFO)
-        -- Close the description buffer
-        vim.api.nvim_buf_delete(bufnr, { force = true })
 
         -- Call callback if provided (should refresh and potentially re-open status view)
         if callback then
@@ -100,6 +98,9 @@ function M.describe(callback)
             vim.api.nvim_set_current_buf(original_bufnr)
           end
         end
+
+        -- Close the description buffer after switching
+        vim.api.nvim_buf_delete(bufnr, { force = true })
       else
         vim.notify("Failed to update description", vim.log.levels.ERROR)
       end
@@ -179,10 +180,8 @@ function M.describe_change(change_id, callback)
 
       if result then
         vim.notify(string.format("Description updated for %s", change_id), vim.log.levels.INFO)
-        -- Close the description buffer
-        vim.api.nvim_buf_delete(bufnr, { force = true })
 
-        -- Call callback if provided (should refresh the log view)
+        -- Call callback if provided (should refresh the log view and switch buffer)
         if callback then
           callback()
         else
@@ -191,6 +190,9 @@ function M.describe_change(change_id, callback)
             vim.api.nvim_set_current_buf(original_bufnr)
           end
         end
+
+        -- Close the description buffer after switching
+        vim.api.nvim_buf_delete(bufnr, { force = true })
       else
         vim.notify(string.format("Failed to update description for %s", change_id), vim.log.levels.ERROR)
       end
@@ -281,8 +283,6 @@ function M.commit(callback)
         local new_result = M.execute({ "new" })
         if new_result then
           vim.notify("Commit completed", vim.log.levels.INFO)
-          -- Close the commit buffer
-          vim.api.nvim_buf_delete(bufnr, { force = true })
 
           -- Call callback if provided (should refresh and potentially re-open status view)
           if callback then
@@ -293,6 +293,9 @@ function M.commit(callback)
               vim.api.nvim_set_current_buf(original_bufnr)
             end
           end
+
+          -- Close the commit buffer after switching
+          vim.api.nvim_buf_delete(bufnr, { force = true })
         else
           vim.notify("Failed to create new change", vim.log.levels.ERROR)
         end

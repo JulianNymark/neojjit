@@ -363,9 +363,11 @@ function M.describe_change()
     return
   end
 
-  -- Describe the change with a callback to refresh log view
+  -- Describe the change with a callback to re-open log view
+  -- Note: The log buffer gets wiped when hidden (bufhidden=wipe), so we need to re-open it
   jj.describe_change(change_id, function()
-    M.refresh()
+    -- Re-open the log view (this will recreate the buffer and refresh the data)
+    M.open()
   end)
 end
 
