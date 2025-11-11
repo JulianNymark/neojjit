@@ -430,6 +430,11 @@ function M.open()
 
   -- Load and render content
   M.refresh()
+
+  -- Move cursor to first entry if available
+  if #state.entry_lines > 0 then
+    vim.api.nvim_win_set_cursor(0, { state.entry_lines[1], 0 })
+  end
 end
 
 -- Close log view and return to status view

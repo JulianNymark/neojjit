@@ -11,8 +11,8 @@ local state = {
   bufnr = nil,
   working_copy = nil,
   changes = {},
-  expanded = {}, -- Track which files have diffs expanded
-  highlights = {}, -- Store ANSI highlights to apply after rendering
+  expanded = {},      -- Track which files have diffs expanded
+  highlights = {},    -- Store ANSI highlights to apply after rendering
   line_metadata = {}, -- Map buffer line number to metadata { type, filename, diff_line, content }
 }
 
@@ -20,7 +20,7 @@ local state = {
 local function parse_status(lines)
   local changes = {}
   local working_copy = "@ (unknown)"
-  
+
   -- Compile regex patterns once
   local file_change_re = vim.regex('^\\([AMD]\\)\\s\\+\\(.\\+\\)$')
   local working_copy_re = vim.regex('^Working copy\\s\\+(@)\\s*:\\s*\\(.\\+\\)$')
@@ -72,7 +72,7 @@ end
 -- Returns table of { buffer_line -> { type, file_line, content, filename } }
 local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
   local metadata = {}
-  
+
   -- Compile regex patterns once
   local header_re = vim.regex('^\\w\\+ .* file .\\+:')
   local header_added_re = vim.regex('^Added .* file')
@@ -109,7 +109,8 @@ local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
           content = content,
         }
         if config.values.debug then
-          vim.notify(string.format("[PARSE] Context (fmt1) %d: old=%s new=%s", buffer_line, old_num, new_num), vim.log.levels.DEBUG)
+          vim.notify(string.format("[PARSE] Context (fmt1) %d: old=%s new=%s", buffer_line, old_num, new_num),
+            vim.log.levels.DEBUG)
         end
       else
         -- Try Format 2 (difftastic): "old  new content"
@@ -123,7 +124,8 @@ local function parse_diff_metadata(diff_lines, start_buffer_line, filename)
             content = content,
           }
           if config.values.debug then
-            vim.notify(string.format("[PARSE] Context (difft) %d: old=%s new=%s", buffer_line, old_num, new_num), vim.log.levels.DEBUG)
+            vim.notify(string.format("[PARSE] Context (difft) %d: old=%s new=%s", buffer_line, old_num, new_num),
+              vim.log.levels.DEBUG)
           end
         else
           -- Try added line with colon
@@ -194,7 +196,7 @@ end
 -- Generate buffer content
 local function generate_content()
   local lines = {}
-  state.highlights = {} -- Reset highlights
+  state.highlights = {}    -- Reset highlights
   state.line_metadata = {} -- Reset line metadata
 
   -- Header with keybindings hint
@@ -275,7 +277,7 @@ local function extract_filename(line)
     vim.regex('^modified\\s\\+\\(.\\+\\)$'),
     vim.regex('^deleted\\s\\+\\(.\\+\\)$'),
   }
-  
+
   for _, pattern in ipairs(patterns) do
     local match = pattern:match_str(line)
     if match then
@@ -283,7 +285,7 @@ local function extract_filename(line)
       return line:match("^%w+%s+(.+)$")
     end
   end
-  
+
   return nil
 end
 
@@ -566,7 +568,8 @@ function M.restore_force(start_line, end_line)
       total_lines = total_lines + #line_nums
     end
 
-    local message = string.format("Discard (force) %d added line(s) from:\n  %s", total_lines, table.concat(file_list, "\n  "))
+    local message = string.format("Discard (force) %d added line(s) from:\n  %s", total_lines,
+      table.concat(file_list, "\n  "))
     local choice = vim.fn.confirm(message, "&Yes\n&No", 2)
 
     if choice == 1 then
@@ -678,7 +681,7 @@ function M.open()
       ":<C-u>lua require('neojjit').restore_visual()<CR>",
       { noremap = true, silent = true }
     )
-    
+
     -- Add visual mode mapping for restore_force
     vim.api.nvim_buf_set_keymap(
       state.bufnr,
@@ -696,6 +699,10 @@ function M.open()
 
   -- Load and render content
   M.refresh()
+
+  -- Move cursor to first change or "(no changes)" line
+  local cursor_line = 6
+  vim.api.nvim_win_set_cursor(0, { cursor_line, 0 })
 
   -- Start file watcher for auto-refresh
   -- Watches the working directory for any file changes
