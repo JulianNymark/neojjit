@@ -211,4 +211,18 @@ function M.log_undo()
   log_view.refresh()
 end
 
+-- Push changes to remote (log view)
+function M.log_push()
+  jj.push()
+  -- Refresh log after push completes
+  log_view.refresh()
+end
+
+-- Pull changes from remote (log view)
+function M.log_pull()
+  jj.pull()
+  -- Refresh log after pull completes
+  log_view.refresh()
+end
+
 return M

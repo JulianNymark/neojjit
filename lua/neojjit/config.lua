@@ -39,6 +39,8 @@ M.values = {
       ["n"] = "log_new",
       ["x"] = "log_abandon",
       ["u"] = "log_undo",
+      ["p"] = "log_pull",
+      ["P"] = "log_push",
       ["?"] = "log_help",
     },
   },
