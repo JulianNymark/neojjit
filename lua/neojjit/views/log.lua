@@ -100,8 +100,7 @@ local function generate_content()
   state.entry_lines = {}
 
   -- Header (no ANSI codes in header)
-  table.insert(lines, "Log View")
-  table.insert(lines, "Hint: j/k navigate | d describe | b bookmark | p/P pull/push | q quit")
+  table.insert(lines, "Hint: j/k navigate | d describe | b bookmark | q quit | ? help")
   table.insert(lines, "")
 
   if #state.log_lines == 0 then

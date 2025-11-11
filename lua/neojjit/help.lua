@@ -14,6 +14,7 @@ local status_help_sections = {
     "p Pull",
     "P Push",
     "u Undo",
+    "<C-r> Redo",
   },
   manipulate_changes = {
     "x Discard",
@@ -22,7 +23,7 @@ local status_help_sections = {
     "S Split (TBD)",
   },
   other = {
-    "<C-r> Refresh",
+    "<C-S-r> Refresh",
     "<Tab> Toggle diff",
     "<CR> Go to file",
     "? Help",
@@ -44,12 +45,13 @@ local log_help_sections = {
     "b Set bookmark",
     "B Set bookmark (backwards)",
     "u Undo",
+    "<C-r> Redo",
     "x abandon"
   },
   other = {
     "y Copy change ID",
     "g Copy commit hash",
-    "<C-r> Refresh",
+    "<C-S-r> Refresh",
     "? Help",
     "q Back to status",
   },

@@ -204,10 +204,24 @@ function M.undo()
   status_view.refresh()
 end
 
+-- Redo last operation (status view)
+function M.redo()
+  jj.redo()
+  -- Refresh status after redo completes
+  status_view.refresh()
+end
+
 -- Undo last operation (log view)
 function M.log_undo()
   jj.undo()
   -- Refresh log after undo completes
+  log_view.refresh()
+end
+
+-- Redo last operation (log view)
+function M.log_redo()
+  jj.redo()
+  -- Refresh log after redo completes
   log_view.refresh()
 end
 

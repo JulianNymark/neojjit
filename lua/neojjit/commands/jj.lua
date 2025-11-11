@@ -503,6 +503,15 @@ function M.undo()
   return result
 end
 
+-- Redo the last undone operation
+function M.redo()
+  local result = M.execute({ "redo" })
+  if result then
+    vim.notify("Redid last operation", vim.log.levels.INFO)
+  end
+  return result
+end
+
 -- Abandon a specific change
 function M.abandon(change_id)
   local args = { "abandon", change_id }
