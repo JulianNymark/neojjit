@@ -8,10 +8,10 @@ local ansi = require("neojjit.ansi")
 -- Current state
 local state = {
   bufnr = nil,
-  log_lines = {}, -- Raw log output with ANSI colors
+  log_lines = {},         -- Raw log output with ANSI colors
   line_to_change_id = {}, -- Map buffer line number to change ID
   line_to_commit_id = {}, -- Map buffer line number to commit ID
-  entry_lines = {}, -- List of line numbers that are log entry headers
+  entry_lines = {},       -- List of line numbers that are log entry headers
 }
 
 -- Extract change ID and commit ID from a log line
@@ -22,28 +22,46 @@ local function extract_ids_from_line(line, line_index)
   local clean_line = ansi.strip_ansi(line)
 
   -- Detect if this is a commit entry line by checking for graph symbols
-  -- Commit lines start with:
+  -- Commit lines contain:
   --   @ (working copy, ASCII)
   --   ◆ (regular commit, UTF-8: \xE2\x97\x86)
   --   ○ (open circle/commit, UTF-8: \xE2\x97\x8B)
   -- Description lines start with: │ (vertical bar, UTF-8: \xE2\x94\x82)
   -- Elided commits start with: ~ (tilde, ASCII)
 
-  -- Check first few bytes for commit markers
+  -- Iterate through the line to find commit markers
   -- @ is 0x40, ◆ is UTF-8 0xE2 0x97 0x86, ○ is UTF-8 0xE2 0x97 0x8B
-  local first_byte = clean_line:byte(1)
   local is_entry_line = false
+  local i = 1
+  local line_len = #clean_line
 
-  if first_byte == 0x40 then -- '@' character
-    is_entry_line = true
-  elseif first_byte == 0xE2 then -- Potential UTF-8 multi-byte char
-    local second_byte = clean_line:byte(2)
-    local third_byte = clean_line:byte(3)
-    -- ◆ (diamond) is 0xE2 0x97 0x86
-    -- ○ (open circle) is 0xE2 0x97 0x8B
-    if second_byte == 0x97 and (third_byte == 0x86 or third_byte == 0x8B) then
+  while i <= line_len do
+    local byte = clean_line:byte(i)
+
+    -- Check for '@' character
+    if byte == 0x40 then
       is_entry_line = true
+      break
+      -- Check for potential UTF-8 multi-byte character
+    elseif byte == 0xE2 and i + 2 <= line_len then
+      local second_byte = clean_line:byte(i + 1)
+      local third_byte = clean_line:byte(i + 2)
+      -- ◆ (diamond) is 0xE2 0x97 0x86
+      -- ○ (open circle) is 0xE2 0x97 0x8B
+      if second_byte == 0x97 and (third_byte == 0x86 or third_byte == 0x8B) then
+        is_entry_line = true
+        break
+      end
+      -- Skip the rest of this UTF-8 character
+      i = i + 2
+      -- Short-circuit: if we hit alphanumeric, we've gone past graph symbols
+    elseif (byte >= 0x30 and byte <= 0x39) or -- 0-9
+        (byte >= 0x41 and byte <= 0x5A) or    -- A-Z
+        (byte >= 0x61 and byte <= 0x7A) then  -- a-z
+      break
     end
+
+    i = i + 1
   end
 
   if not is_entry_line then
