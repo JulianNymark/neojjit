@@ -431,9 +431,13 @@ end
 
 -- Get log entries with color output (similar to terminal)
 function M.log(revset)
-  revset = revset or "ancestors(immutable_heads().., 5)"
+  local args
+  if revset then
+    args = { "log", "-r", revset, "--color=always" }
+  else
+    args = { "log", "--color=always" }
+  end
 
-  local args = { "log", "-r", revset, "--color=always" }
   return M.execute(args)
 end
 
