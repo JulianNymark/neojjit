@@ -26,11 +26,12 @@ local function extract_ids_from_line(line, line_index)
   --   @ (working copy, ASCII)
   --   ◆ (regular commit, UTF-8: \xE2\x97\x86)
   --   ○ (open circle/commit, UTF-8: \xE2\x97\x8B)
+  --   ✕ (conflict, UTF-8: \xE2\x9C\x95)
   -- Description lines start with: │ (vertical bar, UTF-8: \xE2\x94\x82)
   -- Elided commits start with: ~ (tilde, ASCII)
 
   -- Iterate through the line to find commit markers
-  -- @ is 0x40, ◆ is UTF-8 0xE2 0x97 0x86, ○ is UTF-8 0xE2 0x97 0x8B
+  -- @ is 0x40, ◆ is UTF-8 0xE2 0x97 0x86, ○ is UTF-8 0xE2 0x97 0x8B, ✕ is UTF-8 0xE2 0x9C 0x95
   local is_entry_line = false
   local i = 1
   local line_len = #clean_line
@@ -48,7 +49,9 @@ local function extract_ids_from_line(line, line_index)
       local third_byte = clean_line:byte(i + 2)
       -- ◆ (diamond) is 0xE2 0x97 0x86
       -- ○ (open circle) is 0xE2 0x97 0x8B
-      if second_byte == 0x97 and (third_byte == 0x86 or third_byte == 0x8B) then
+      -- ✕ (conflict) is 0xE2 0x9C 0x95
+      if (second_byte == 0x97 and (third_byte == 0x86 or third_byte == 0x8B)) or
+         (second_byte == 0x9C and third_byte == 0x95) then
         is_entry_line = true
         break
       end
