@@ -35,7 +35,7 @@ Using [Lazy](https://github.com/folke/lazy.nvim):
 {
   "JulianNymark/neojjit",
   keys = {
-    { "<leader>jj", function() require("neojjit").open() end, desc = "Jujutsu status" },
+    { "<leader>jj", function() require("neojjit").open() end, desc = "Neojjit" },
   },
 }
 ```
