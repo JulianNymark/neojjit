@@ -633,6 +633,57 @@ function M.restore_force(start_line, end_line)
   end
 end
 
+-- Handle force prefix key (normal mode)
+local function handle_force_prefix()
+  vim.notify("Force: ", vim.log.levels.INFO)
+  local ok, char = pcall(vim.fn.getcharstr)
+  if not ok or char == "\27" then -- \27 is ESC
+    vim.notify("Cancelled", vim.log.levels.INFO)
+    return
+  end
+  
+  -- Map force commands
+  local force_commands = {
+    x = function() M.restore_force() end,
+  }
+  
+  local cmd = force_commands[char]
+  if cmd then
+    cmd()
+  else
+    vim.notify(string.format("No force command for '%s'", char), vim.log.levels.WARN)
+  end
+end
+
+-- Handle force prefix key (visual mode)
+local function handle_force_prefix_visual()
+  vim.notify("Force: ", vim.log.levels.INFO)
+  local ok, char = pcall(vim.fn.getcharstr)
+  if not ok or char == "\27" then -- \27 is ESC
+    vim.notify("Cancelled", vim.log.levels.INFO)
+    return
+  end
+  
+  -- Get the visual selection marks
+  local start_line = vim.fn.line("'<")
+  local end_line = vim.fn.line("'>")
+  
+  -- Map force commands
+  local force_commands = {
+    x = function() M.restore_force(start_line, end_line) end,
+  }
+  
+  local cmd = force_commands[char]
+  if cmd then
+    cmd()
+  else
+    vim.notify(string.format("No force command for '%s'", char), vim.log.levels.WARN)
+  end
+end
+
+M.handle_force_prefix = handle_force_prefix
+M.handle_force_prefix_visual = handle_force_prefix_visual
+
 -- Refresh status data
 function M.refresh()
   if config.values.debug then
@@ -672,6 +723,15 @@ function M.open()
     -- Set up keymaps
     ui.set_mappings(state.bufnr, config.values.mappings.status)
 
+    -- Map 'f' to force prefix handler
+    vim.api.nvim_buf_set_keymap(
+      state.bufnr,
+      "n",
+      "f",
+      "<cmd>lua require('neojjit.views.status').handle_force_prefix()<CR>",
+      { noremap = true, silent = true }
+    )
+
     -- Add visual mode mapping for restore
     -- Use :<C-u> to clear the range and avoid Ex mode issues
     vim.api.nvim_buf_set_keymap(
@@ -682,12 +742,12 @@ function M.open()
       { noremap = true, silent = true }
     )
 
-    -- Add visual mode mapping for restore_force
+    -- Add visual mode mapping for force prefix
     vim.api.nvim_buf_set_keymap(
       state.bufnr,
       "v",
-      "X",
-      ":<C-u>lua require('neojjit').restore_force_visual()<CR>",
+      "f",
+      ":<C-u>lua require('neojjit.views.status').handle_force_prefix_visual()<CR>",
       { noremap = true, silent = true }
     )
   end

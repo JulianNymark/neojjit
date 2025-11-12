@@ -18,11 +18,11 @@ local status_help_sections = {
   },
   manipulate_changes = {
     "x Discard",
-    "X Discard (force)",
     "s squash (TBD)",
     "S Split (TBD)",
   },
   other = {
+    "f Force next command",
     "<C-S-r> Refresh",
     "<Tab> Toggle diff",
     "<CR> Go to file",
@@ -40,15 +40,14 @@ local log_help_sections = {
   commands = {
     "n New change",
     "e Edit change",
-    "E Edit (force)",
     "d Describe",
     "b Set bookmark",
-    "B Set bookmark (backwards)",
     "u Undo",
     "<C-r> Redo",
     "x abandon"
   },
   other = {
+    "f Force next command",
     "y Copy change ID",
     "g Copy commit hash",
     "<C-S-r> Refresh",

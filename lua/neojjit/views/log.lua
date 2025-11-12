@@ -357,6 +357,31 @@ function M.new_change()
   end
 end
 
+-- Handle force prefix key
+local function handle_force_prefix()
+  vim.notify("Force: ", vim.log.levels.INFO)
+  local ok, char = pcall(vim.fn.getcharstr)
+  if not ok or char == "\27" then -- \27 is ESC
+    vim.notify("Cancelled", vim.log.levels.INFO)
+    return
+  end
+  
+  -- Map force commands
+  local force_commands = {
+    e = function() M.edit_change_force() end,
+    b = function() M.set_bookmark_force() end,
+  }
+  
+  local cmd = force_commands[char]
+  if cmd then
+    cmd()
+  else
+    vim.notify(string.format("No force command for '%s'", char), vim.log.levels.WARN)
+  end
+end
+
+M.handle_force_prefix = handle_force_prefix
+
 -- Describe the change at cursor
 function M.describe_change()
   local change_id = get_current_change_id()
@@ -410,6 +435,15 @@ function M.open()
     -- Set up keymaps
     local mappings = config.values.mappings.log or {}
     ui.set_mappings(state.bufnr, mappings)
+
+    -- Map 'f' to force prefix handler
+    vim.api.nvim_buf_set_keymap(
+      state.bufnr,
+      "n",
+      "f",
+      "<cmd>lua require('neojjit.views.log').handle_force_prefix()<CR>",
+      { noremap = true, silent = true }
+    )
 
     -- Add j/k navigation to jump between log entries
     vim.api.nvim_buf_set_keymap(
