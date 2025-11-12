@@ -34,16 +34,9 @@ Using [Lazy](https://github.com/folke/lazy.nvim):
 ```lua
 {
   "JulianNymark/neojjit",
-  dependencies = {
-    "nvim-lua/plenary.nvim",         -- required
-    "sindrets/diffview.nvim",        -- optional - Diff integration
-
-    -- Only one of these is needed for pickers
-    "nvim-telescope/telescope.nvim", -- optional
-    "ibhagwan/fzf-lua",              -- optional
-    "echasnovski/mini.pick",         -- optional
+  keys = {
+    { "<leader>jj", function() require("neojjit").open() end, desc = "Jujutsu status" },
   },
-  config = true
 }
 ```
 
